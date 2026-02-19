@@ -3,14 +3,18 @@ import SwiftUI
 struct SidebarView: View {
     @Bindable var vault: VaultViewModel
     @Bindable var graph: GraphViewModel
+    @Bindable var whiteboard: WhiteboardViewModel
+    var onSelectCanvas: ((CanvasEntity) -> Void)?
 
     @State private var hoverNoteId: UUID?
+    @State private var hoverCanvasId: UUID?
 
     var body: some View {
         VStack(spacing: 0) {
             header
             searchBar
             noteList
+            canvasSection
             sidebarFooter
         }
         .background(LatticeTheme.deepSpace)
@@ -122,6 +126,89 @@ struct SidebarView: View {
             }
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
+        }
+    }
+
+    // MARK: - Canvas Section
+
+    private var canvasSection: some View {
+        VStack(spacing: 0) {
+            // Divider
+            Rectangle()
+                .fill(LatticeTheme.border)
+                .frame(height: 1)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 4)
+
+            // Section header
+            HStack {
+                Text("CANVASES")
+                    .font(.system(size: 10, weight: .semibold, design: .rounded))
+                    .tracking(2)
+                    .foregroundStyle(LatticeTheme.textMuted)
+
+                Spacer()
+
+                // Canvas count
+                Text("\(whiteboard.canvases.count)")
+                    .font(.system(size: 10, weight: .regular, design: .monospaced))
+                    .foregroundStyle(LatticeTheme.textMuted)
+
+                // New canvas button
+                Button {
+                    whiteboard.createCanvas()
+                    if let canvas = whiteboard.canvases.first {
+                        onSelectCanvas?(canvas)
+                    }
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(LatticeTheme.lavender)
+                        .frame(width: 22, height: 22)
+                        .background {
+                            RoundedRectangle(cornerRadius: 5, style: .continuous)
+                                .fill(LatticeTheme.surface)
+                                .overlay {
+                                    RoundedRectangle(cornerRadius: 5, style: .continuous)
+                                        .strokeBorder(LatticeTheme.border, lineWidth: 1)
+                                }
+                        }
+                }
+                .buttonStyle(.plain)
+                .help("New Canvas")
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 8)
+            .padding(.bottom, 6)
+
+            // Canvas list
+            ScrollView {
+                LazyVStack(spacing: 1) {
+                    ForEach(whiteboard.canvases, id: \.id) { canvas in
+                        CanvasListItem(
+                            canvas: canvas,
+                            isSelected: whiteboard.selectedCanvas?.id == canvas.id,
+                            isHovered: hoverCanvasId == canvas.id
+                        )
+                        .onTapGesture {
+                            withAnimation(.easeOut(duration: 0.18)) {
+                                whiteboard.selectCanvas(canvas)
+                                onSelectCanvas?(canvas)
+                            }
+                        }
+                        .onHover { hover in
+                            hoverCanvasId = hover ? canvas.id : nil
+                        }
+                        .contextMenu {
+                            Button("Delete", role: .destructive) {
+                                whiteboard.deleteCanvas(canvas)
+                            }
+                        }
+                    }
+                }
+                .padding(.horizontal, 8)
+            }
+            .frame(maxHeight: 200)
         }
     }
 

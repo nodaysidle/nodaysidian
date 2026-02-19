@@ -138,7 +138,45 @@ final class PersistenceController: Sendable {
             edgeIsAuto, edgeCreatedAt, edgeLabel
         ]
 
-        model.entities = [noteEntity, edgeEntity]
+        // --- CanvasEntity ---
+        let canvasEntity = NSEntityDescription()
+        canvasEntity.name = "CanvasEntity"
+        canvasEntity.managedObjectClassName = "CanvasEntity"
+
+        let canvasId = NSAttributeDescription()
+        canvasId.name = "id"
+        canvasId.attributeType = .UUIDAttributeType
+        canvasId.isOptional = false
+
+        let canvasTitle = NSAttributeDescription()
+        canvasTitle.name = "title"
+        canvasTitle.attributeType = .stringAttributeType
+        canvasTitle.defaultValue = "Untitled Canvas"
+
+        let canvasElements = NSAttributeDescription()
+        canvasElements.name = "elementsData"
+        canvasElements.attributeType = .binaryDataAttributeType
+        canvasElements.isOptional = true
+
+        let canvasCreatedAt = NSAttributeDescription()
+        canvasCreatedAt.name = "createdAt"
+        canvasCreatedAt.attributeType = .dateAttributeType
+
+        let canvasModifiedAt = NSAttributeDescription()
+        canvasModifiedAt.name = "modifiedAt"
+        canvasModifiedAt.attributeType = .dateAttributeType
+
+        let canvasLinkedNote = NSAttributeDescription()
+        canvasLinkedNote.name = "linkedNoteId"
+        canvasLinkedNote.attributeType = .UUIDAttributeType
+        canvasLinkedNote.isOptional = true
+
+        canvasEntity.properties = [
+            canvasId, canvasTitle, canvasElements,
+            canvasCreatedAt, canvasModifiedAt, canvasLinkedNote
+        ]
+
+        model.entities = [noteEntity, edgeEntity, canvasEntity]
         return model
     }
 

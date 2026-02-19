@@ -22,6 +22,11 @@ struct NodaysIdleApp: App {
                 }
                 .keyboardShortcut("n", modifiers: .command)
 
+                Button("New Canvas") {
+                    NotificationCenter.default.post(name: .createNewCanvas, object: nil)
+                }
+                .keyboardShortcut("n", modifiers: [.command, .shift])
+
                 Divider()
 
                 Button("Import Obsidian Vault...") {
@@ -53,4 +58,5 @@ extension Notification.Name {
     static let createNewNote = Notification.Name("createNewNote")
     static let importVault = Notification.Name("importVault")
     static let intelligenceComplete = Notification.Name("intelligenceComplete")
+    static let createNewCanvas = Notification.Name("createNewCanvas")
 }

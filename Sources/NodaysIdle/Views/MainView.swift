@@ -1,33 +1,53 @@
 import SwiftUI
 import CoreData
 
+enum ViewMode {
+    case graph
+    case editor
+    case whiteboard
+}
+
 struct MainView: View {
     @Environment(\.managedObjectContext) private var context
     @State private var vault = VaultViewModel()
     @State private var graph = GraphViewModel()
-    @State private var showGraph = true
+    @State private var whiteboard = WhiteboardViewModel()
+    @State private var viewMode: ViewMode = .graph
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
 
     var body: some View {
         NavigationSplitView(columnVisibility: $columnVisibility) {
-            SidebarView(vault: vault, graph: graph)
+            SidebarView(vault: vault, graph: graph, whiteboard: whiteboard, onSelectCanvas: { canvas in
+                whiteboard.selectCanvas(canvas)
+                viewMode = .whiteboard
+            })
                 .navigationSplitViewColumnWidth(min: 240, ideal: 280, max: 360)
         } detail: {
             ZStack {
                 LatticeTheme.void
                     .ignoresSafeArea()
 
-                if showGraph {
+                switch viewMode {
+                case .graph:
                     GraphCanvasView(graph: graph, vault: vault)
                         .transition(.opacity)
-                } else if let note = vault.selectedNote {
-                    NoteEditorView(note: note, vault: vault)
-                        .transition(.move(edge: .trailing).combined(with: .opacity))
-                } else {
-                    emptyState
+                case .editor:
+                    if let note = vault.selectedNote {
+                        NoteEditorView(note: note, vault: vault)
+                            .transition(.move(edge: .trailing).combined(with: .opacity))
+                    } else {
+                        emptyState
+                    }
+                case .whiteboard:
+                    if whiteboard.selectedCanvas != nil {
+                        WhiteboardView(whiteboard: whiteboard)
+                            .transition(.opacity)
+                    } else {
+                        canvasEmptyState
+                    }
                 }
             }
-            .animation(.easeInOut(duration: 0.25), value: showGraph)
+            .animation(.easeInOut(duration: 0.25), value: viewMode)
             .animation(.easeInOut(duration: 0.25), value: vault.selectedNote?.id)
         }
         .background(LatticeTheme.void)
@@ -37,10 +57,11 @@ struct MainView: View {
         .onAppear {
             vault.bind(context: context)
             graph.bind(context: context)
+            whiteboard.bind(context: context)
         }
         .onReceive(NotificationCenter.default.publisher(for: .createNewNote)) { _ in
             vault.createNote()
-            showGraph = false
+            viewMode = .editor
         }
         .onReceive(NotificationCenter.default.publisher(for: .importVault)) { _ in
             vault.showImportPanel = true
@@ -48,6 +69,13 @@ struct MainView: View {
         .onReceive(NotificationCenter.default.publisher(for: .intelligenceComplete)) { _ in
             vault.reload()
             graph.reload()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .createNewCanvas)) { _ in
+            whiteboard.createCanvas()
+            if let canvas = whiteboard.canvases.first {
+                whiteboard.selectCanvas(canvas)
+            }
+            viewMode = .whiteboard
         }
         .fileImporter(
             isPresented: $vault.showImportPanel,
@@ -57,6 +85,13 @@ struct MainView: View {
             if case .success(let urls) = result, let url = urls.first {
                 vault.importVault(url: url)
                 graph.reload()
+            }
+        }
+        .onChange(of: vault.selectedNote?.id) { oldValue, newValue in
+            if newValue != nil && viewMode == .graph {
+                // Don't auto-switch from graph — user might just be highlighting
+            } else if newValue != nil {
+                viewMode = .editor
             }
         }
     }
@@ -94,7 +129,7 @@ struct MainView: View {
                         color: LatticeTheme.mint
                     ) {
                         vault.createNote()
-                        showGraph = false
+                        viewMode = .editor
                     }
 
                     actionButton(
@@ -115,6 +150,41 @@ struct MainView: View {
                 .tracking(1.5)
                 .foregroundStyle(LatticeTheme.textMuted)
                 .padding(.bottom, 28)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    // MARK: - Canvas Empty State
+
+    private var canvasEmptyState: some View {
+        VStack(spacing: 0) {
+            Spacer()
+            VStack(spacing: 32) {
+                VStack(spacing: 10) {
+                    Text("WHITEBOARD")
+                        .font(.system(size: 36, weight: .ultraLight, design: .rounded))
+                        .tracking(10)
+                        .foregroundStyle(LatticeTheme.textPrimary)
+                    Text("Sketch, diagram, think visually.")
+                        .font(.system(size: 14, weight: .regular, design: .default))
+                        .tracking(0.2)
+                        .foregroundStyle(LatticeTheme.textSecondary)
+                }
+                Rectangle()
+                    .fill(LatticeTheme.border)
+                    .frame(width: 40, height: 1)
+                actionButton(
+                    icon: "plus",
+                    title: "Create a Canvas",
+                    color: LatticeTheme.lavender
+                ) {
+                    whiteboard.createCanvas()
+                    if let canvas = whiteboard.canvases.first {
+                        whiteboard.selectCanvas(canvas)
+                    }
+                }
+            }
+            Spacer()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -155,21 +225,46 @@ struct MainView: View {
         ToolbarItem {
             Button {
                 withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                    showGraph.toggle()
+                    viewMode = .graph
                 }
             } label: {
-                Image(systemName: showGraph ? "doc.text" : "point.3.connected.trianglepath.dotted")
+                Image(systemName: "point.3.connected.trianglepath.dotted")
                     .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(LatticeTheme.mint)
-                    .contentTransition(.symbolEffect(.replace))
+                    .foregroundStyle(viewMode == .graph ? LatticeTheme.mint : LatticeTheme.textMuted)
             }
-            .help(showGraph ? "Show Editor" : "Show Graph")
+            .help("Graph")
+        }
+
+        ToolbarItem {
+            Button {
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                    viewMode = .editor
+                }
+            } label: {
+                Image(systemName: "doc.text")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(viewMode == .editor ? LatticeTheme.mint : LatticeTheme.textMuted)
+            }
+            .help("Editor")
+        }
+
+        ToolbarItem {
+            Button {
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                    viewMode = .whiteboard
+                }
+            } label: {
+                Image(systemName: "square.on.square")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(viewMode == .whiteboard ? LatticeTheme.lavender : LatticeTheme.textMuted)
+            }
+            .help("Whiteboard")
         }
 
         ToolbarItem {
             Button {
                 vault.createNote()
-                showGraph = false
+                viewMode = .editor
             } label: {
                 Image(systemName: "plus")
                     .font(.system(size: 13, weight: .medium))
