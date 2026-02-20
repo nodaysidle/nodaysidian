@@ -5,8 +5,9 @@ CONF=${1:-release}
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 cd "$ROOT"
 
-APP_NAME="NodaysIdle"
-BUNDLE_ID="com.nodaysidle.app"
+EXECUTABLE_NAME="NodaysIdle"
+APP_NAME="Nodaysidian"
+BUNDLE_ID="com.nodaysidian.app"
 MACOS_MIN_VERSION="15.0"
 MENU_BAR_APP=0
 SIGNING_MODE=${SIGNING_MODE:-adhoc}
@@ -26,7 +27,7 @@ if [[ ${#ARCH_LIST[@]} -eq 0 ]]; then
 fi
 
 for ARCH in "${ARCH_LIST[@]}"; do
-  swift build -c "$CONF" --arch "$ARCH"
+  swift build -c "$CONF" --arch "$ARCH" --product "$EXECUTABLE_NAME"
 done
 
 APP="$ROOT/${APP_NAME}.app"
@@ -47,9 +48,9 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 <plist version="1.0">
 <dict>
     <key>CFBundleName</key><string>${APP_NAME}</string>
-    <key>CFBundleDisplayName</key><string>NODAYSIDLE</string>
+    <key>CFBundleDisplayName</key><string>Nodaysidian</string>
     <key>CFBundleIdentifier</key><string>${BUNDLE_ID}</string>
-    <key>CFBundleExecutable</key><string>${APP_NAME}</string>
+    <key>CFBundleExecutable</key><string>${EXECUTABLE_NAME}</string>
     <key>CFBundlePackageType</key><string>APPL</string>
     <key>CFBundleShortVersionString</key><string>${MARKETING_VERSION}</string>
     <key>CFBundleVersion</key><string>${BUILD_NUMBER}</string>
@@ -93,14 +94,14 @@ install_binary() {
   chmod +x "$dest"
 }
 
-install_binary "$APP_NAME" "$APP/Contents/MacOS/$APP_NAME"
+install_binary "$EXECUTABLE_NAME" "$APP/Contents/MacOS/$EXECUTABLE_NAME"
 
-APP_RESOURCES_DIR="$ROOT/Sources/$APP_NAME/Resources"
+APP_RESOURCES_DIR="$ROOT/Sources/$EXECUTABLE_NAME/Resources"
 if [[ -d "$APP_RESOURCES_DIR" ]]; then
   cp -R "$APP_RESOURCES_DIR/." "$APP/Contents/Resources/"
 fi
 
-PREFERRED_BUILD_DIR="$(dirname "$(build_product_path "$APP_NAME" "${ARCH_LIST[0]}")")"
+PREFERRED_BUILD_DIR="$(dirname "$(build_product_path "$EXECUTABLE_NAME" "${ARCH_LIST[0]}")")"
 shopt -s nullglob
 SWIFTPM_BUNDLES=("${PREFERRED_BUILD_DIR}/"*.bundle)
 shopt -u nullglob
@@ -120,7 +121,7 @@ find "$APP" -name '._*' -delete
 
 ENTITLEMENTS_DIR="$ROOT/.build/entitlements"
 mkdir -p "$ENTITLEMENTS_DIR"
-APP_ENTITLEMENTS="$ENTITLEMENTS_DIR/${APP_NAME}.entitlements"
+APP_ENTITLEMENTS="$ENTITLEMENTS_DIR/${EXECUTABLE_NAME}.entitlements"
 
 cat > "$APP_ENTITLEMENTS" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>

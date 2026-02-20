@@ -2,7 +2,8 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-APP_NAME="NodaysIdle"
+APP_NAME="Nodaysidian"
+EXECUTABLE_NAME="NodaysIdle"
 APP_BUNDLE="${ROOT_DIR}/${APP_NAME}.app"
 INSTALL_DIR="/Applications"
 
@@ -16,9 +17,14 @@ if [[ ! -d "$APP_BUNDLE" ]]; then
   fail "App bundle not found at $APP_BUNDLE"
 fi
 
-pkill -f "${APP_NAME}.app/Contents/MacOS/${APP_NAME}" 2>/dev/null || true
-pkill -x "${APP_NAME}" 2>/dev/null || true
+# Kill old versions (both old and new names)
+pkill -f "${APP_NAME}.app/Contents/MacOS/${EXECUTABLE_NAME}" 2>/dev/null || true
+pkill -f "NodaysIdle.app/Contents/MacOS/${EXECUTABLE_NAME}" 2>/dev/null || true
+pkill -x "${EXECUTABLE_NAME}" 2>/dev/null || true
 sleep 0.5
+
+# Remove old NodaysIdle.app if it exists
+rm -rf "${INSTALL_DIR}/NodaysIdle.app"
 
 log "==> Installing to ${INSTALL_DIR}..."
 rm -rf "${INSTALL_DIR}/${APP_NAME}.app"
