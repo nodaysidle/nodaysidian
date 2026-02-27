@@ -18,7 +18,7 @@
 
 ## What is this?
 
-NODAYSIDLE is a native macOS knowledge graph app that **automatically discovers hidden connections** between your notes using on-device machine learning. Import your Obsidian vault or start fresh. The app builds a living, force-directed graph where nodes glow based on how ready they are for your attention.
+NODAYSIDIAN is a native macOS knowledge graph app that **automatically discovers hidden connections** between your notes using on-device machine learning. Import your Obsidian vault or start fresh. The app builds a living, force-directed graph where nodes glow based on how ready they are for your attention.
 
 No Electron. No browser tabs. No API keys. No subscriptions. Just `swift build` and go.
 
