@@ -73,6 +73,19 @@ struct WhiteboardView: View {
             whiteboard.deleteSelected()
             return .handled
         }
+        .toolbar {
+            // Hidden toolbar items to register Cmd+Z and Cmd+Shift+Z
+            ToolbarItem(placement: .automatic) {
+                Button("Undo") { whiteboard.undo() }
+                    .keyboardShortcut("z", modifiers: .command)
+                    .hidden()
+            }
+            ToolbarItem(placement: .automatic) {
+                Button("Redo") { whiteboard.redo() }
+                    .keyboardShortcut("z", modifiers: [.command, .shift])
+                    .hidden()
+            }
+        }
         .onChange(of: whiteboard.elements.count) {
             whiteboard.saveCurrentCanvas()
         }

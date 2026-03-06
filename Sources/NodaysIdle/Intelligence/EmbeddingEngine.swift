@@ -6,7 +6,12 @@ actor EmbeddingEngine {
     private let embedding: NLEmbedding?
 
     init() {
-        self.embedding = NLEmbedding.wordEmbedding(for: .english)
+        // Prefer sentence-level embeddings (macOS 15+) for better document similarity
+        if let sentence = NLEmbedding.sentenceEmbedding(for: .english) {
+            self.embedding = sentence
+        } else {
+            self.embedding = NLEmbedding.wordEmbedding(for: .english)
+        }
     }
 
     func generateEmbedding(for text: String) -> [Double]? {

@@ -11,6 +11,7 @@ struct NoteListItem: View {
             Circle()
                 .fill(LatticeTheme.ripenessColor(note.ripenessScore))
                 .frame(width: 6, height: 6)
+                .accessibilityLabel("Ripeness: \(Int(note.ripenessScore * 100))%")
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(note.displayTitle)

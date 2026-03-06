@@ -13,8 +13,14 @@ final class GraphViewModel {
     var canvasScale: CGFloat = 1.0
     var isSimulating: Bool = true
 
+    // Accumulated gesture state
+    var savedOffset: CGSize = .zero
+    var savedScale: CGFloat = 1.0
+
     private var context: NSManagedObjectContext?
     private var simulationTimer: Timer?
+    private var nodeIndex: [UUID: Int] = [:]
+    private var alpha: Double = 1.0
 
     struct GraphNode: Identifiable, Sendable {
         let id: UUID
@@ -75,14 +81,20 @@ final class GraphViewModel {
             )
         }
 
+        rebuildIndex()
         startSimulation()
     }
 
-    // MARK: - Force-Directed Simulation
+    private func rebuildIndex() {
+        nodeIndex = Dictionary(uniqueKeysWithValues: nodes.enumerated().map { ($1.id, $0) })
+    }
+
+    // MARK: - Force-Directed Simulation with Cooling
 
     func startSimulation() {
         simulationTimer?.invalidate()
-        guard isSimulating else { return }
+        alpha = 1.0
+        isSimulating = true
 
         simulationTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / 60.0, repeats: true) { [weak self] _ in
             Task { @MainActor in
@@ -95,6 +107,15 @@ final class GraphViewModel {
         isSimulating = false
         simulationTimer?.invalidate()
         simulationTimer = nil
+        savePositions()
+    }
+
+    func toggleSimulation() {
+        if isSimulating {
+            stopSimulation()
+        } else {
+            startSimulation()
+        }
     }
 
     private func simulationStep() {
@@ -104,6 +125,15 @@ final class GraphViewModel {
         let attraction: Double = 0.005
         let damping: Double = 0.85
         let centerPull: Double = 0.01
+        let alphaDecay: Double = 0.995
+        let alphaMin: Double = 0.005
+
+        // Apply cooling
+        alpha *= alphaDecay
+        if alpha < alphaMin {
+            stopSimulation()
+            return
+        }
 
         for i in nodes.indices {
             var fx = 0.0, fy = 0.0
@@ -122,18 +152,19 @@ final class GraphViewModel {
             fx -= nodes[i].x * centerPull
             fy -= nodes[i].y * centerPull
 
-            nodes[i].vx = (nodes[i].vx + fx) * damping
-            nodes[i].vy = (nodes[i].vy + fy) * damping
+            nodes[i].vx = (nodes[i].vx + fx * alpha) * damping
+            nodes[i].vy = (nodes[i].vy + fy * alpha) * damping
         }
 
-        // Attraction along edges
+        // Attraction along edges — O(1) lookups via index
         for edge in edges {
-            guard let si = nodes.firstIndex(where: { $0.id == edge.sourceId }),
-                  let ti = nodes.firstIndex(where: { $0.id == edge.targetId }) else { continue }
+            guard let si = nodeIndex[edge.sourceId],
+                  let ti = nodeIndex[edge.targetId],
+                  si < nodes.count, ti < nodes.count else { continue }
 
             let dx = nodes[ti].x - nodes[si].x
             let dy = nodes[ti].y - nodes[si].y
-            let force = attraction * edge.strength
+            let force = attraction * edge.strength * alpha
 
             nodes[si].vx += dx * force
             nodes[si].vy += dy * force
@@ -163,6 +194,10 @@ final class GraphViewModel {
                 note.posY = node.y
             }
         }
-        try? context.save()
+        do {
+            try context.save()
+        } catch {
+            print("[Nodaysidian] Failed to save graph positions: \(error.localizedDescription)")
+        }
     }
 }

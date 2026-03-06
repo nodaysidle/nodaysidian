@@ -10,8 +10,11 @@ final class VaultViewModel {
     var isImporting: Bool = false
     var importMessage: String?
     var showImportPanel: Bool = false
+    var showDeleteConfirmation: Bool = false
+    var noteToDelete: NoteEntity?
 
     private var context: NSManagedObjectContext?
+    private var importMessageTask: Task<Void, Never>?
 
     var filteredNotes: [NoteEntity] {
         guard !searchText.isEmpty else { return notes }
@@ -36,24 +39,34 @@ final class VaultViewModel {
     func createNote() {
         guard let context else { return }
         let note = NoteEntity.create(in: context, title: "Untitled", content: "")
-        try? context.save()
+        do { try context.save() } catch {
+            print("[Nodaysidian] Failed to save new note: \(error.localizedDescription)")
+        }
         notes.insert(note, at: 0)
         selectedNote = note
     }
 
+    func confirmDelete(_ note: NoteEntity) {
+        noteToDelete = note
+        showDeleteConfirmation = true
+    }
+
     func deleteNote(_ note: NoteEntity) {
         guard let context else { return }
+        let noteId = note.id
         // Delete associated edges
         let edgeReq = EdgeEntity.fetchRequest()
         if let edges = try? context.fetch(edgeReq) {
-            for edge in edges where edge.sourceId == note.id || edge.targetId == note.id {
+            for edge in edges where edge.sourceId == noteId || edge.targetId == noteId {
                 context.delete(edge)
             }
         }
         context.delete(note)
-        try? context.save()
-        notes.removeAll { $0.id == note.id }
-        if selectedNote?.id == note.id {
+        do { try context.save() } catch {
+            print("[Nodaysidian] Failed to delete note: \(error.localizedDescription)")
+        }
+        notes.removeAll { $0.id == noteId }
+        if selectedNote?.id == noteId {
             selectedNote = nil
         }
     }
@@ -61,7 +74,9 @@ final class VaultViewModel {
     func saveNote() {
         guard let context else { return }
         selectedNote?.modifiedAt = Date()
-        try? context.save()
+        do { try context.save() } catch {
+            print("[Nodaysidian] Failed to save note: \(error.localizedDescription)")
+        }
     }
 
     func importVault(url: URL) {
@@ -77,5 +92,13 @@ final class VaultViewModel {
             importMessage = "Import failed: \(error.localizedDescription)"
         }
         isImporting = false
+
+        // Auto-clear import message after 5 seconds
+        importMessageTask?.cancel()
+        importMessageTask = Task {
+            try? await Task.sleep(for: .seconds(5))
+            guard !Task.isCancelled else { return }
+            importMessage = nil
+        }
     }
 }

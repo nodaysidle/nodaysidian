@@ -83,12 +83,18 @@ final class WhiteboardViewModel {
 
     // MARK: - Canvas CRUD
 
-    func createCanvas() {
-        guard let context else { return }
+    @discardableResult
+    func createCanvas() -> CanvasEntity? {
+        guard let context else { return nil }
         let canvas = CanvasEntity.create(in: context, title: "Untitled Canvas")
-        try? context.save()
+        do {
+            try context.save()
+        } catch {
+            print("[Nodaysidian] Failed to save new canvas: \(error.localizedDescription)")
+        }
         canvases.insert(canvas, at: 0)
         selectCanvas(canvas)
+        return canvas
     }
 
     func selectCanvas(_ canvas: CanvasEntity) {
@@ -102,10 +108,21 @@ final class WhiteboardViewModel {
         canvasScale = 1.0
     }
 
+    func renameCanvas(_ canvas: CanvasEntity, to newTitle: String) {
+        guard let context else { return }
+        canvas.title = newTitle
+        canvas.modifiedAt = Date()
+        do { try context.save() } catch {
+            print("[Nodaysidian] Failed to rename canvas: \(error.localizedDescription)")
+        }
+    }
+
     func deleteCanvas(_ canvas: CanvasEntity) {
         guard let context else { return }
         context.delete(canvas)
-        try? context.save()
+        do { try context.save() } catch {
+            print("[Nodaysidian] Failed to delete canvas: \(error.localizedDescription)")
+        }
         canvases.removeAll { $0.id == canvas.id }
         if selectedCanvas?.id == canvas.id {
             selectedCanvas = nil
@@ -118,7 +135,9 @@ final class WhiteboardViewModel {
         guard let canvas = selectedCanvas, let context else { return }
         canvas.elements = elements
         canvas.modifiedAt = Date()
-        try? context.save()
+        do { try context.save() } catch {
+            print("[Nodaysidian] Failed to save canvas: \(error.localizedDescription)")
+        }
     }
 
     // MARK: - Undo / Redo

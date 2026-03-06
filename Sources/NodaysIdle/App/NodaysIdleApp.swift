@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 
 struct NodaysIdleApp: App {
     @State private var persistence = PersistenceController.shared
@@ -6,12 +7,23 @@ struct NodaysIdleApp: App {
 
     var body: some Scene {
         WindowGroup {
-            MainView()
-                .environment(\.managedObjectContext, persistence.container.viewContext)
-                .preferredColorScheme(.dark)
-                .task {
-                    await runIntelligenceCycle()
+            Group {
+                if persistence.loadError != nil {
+                    storeErrorView
+                } else {
+                    MainView()
+                        .environment(\.managedObjectContext, persistence.container.viewContext)
                 }
+            }
+            .preferredColorScheme(.dark)
+            .task {
+                guard persistence.loadError == nil else { return }
+                await runIntelligenceCycle()
+                NotificationCenter.default.post(name: .intelligenceComplete, object: nil)
+            }
+            .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in
+                persistence.save()
+            }
         }
         .windowStyle(.automatic)
         .defaultSize(width: 1400, height: 900)
@@ -47,6 +59,32 @@ struct NodaysIdleApp: App {
         }
     }
 
+    private var storeErrorView: some View {
+        VStack(spacing: 20) {
+            Image(systemName: "exclamationmark.triangle")
+                .font(.system(size: 48, weight: .light))
+                .foregroundStyle(LatticeTheme.coral)
+
+            Text("Unable to load data store")
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(LatticeTheme.textPrimary)
+
+            Text(persistence.loadError?.localizedDescription ?? "Unknown error")
+                .font(.system(size: 13))
+                .foregroundStyle(LatticeTheme.textSecondary)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: 400)
+
+            Text("Try restarting the app. If the problem persists, your data store may need to be reset.")
+                .font(.system(size: 12))
+                .foregroundStyle(LatticeTheme.textMuted)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: 400)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(LatticeTheme.void)
+    }
+
     private func runIntelligenceCycle() async {
         let ctx = persistence.container.viewContext
         RipenessEngine.computeRipeness(context: ctx)
@@ -59,4 +97,5 @@ extension Notification.Name {
     static let importVault = Notification.Name("importVault")
     static let intelligenceComplete = Notification.Name("intelligenceComplete")
     static let createNewCanvas = Notification.Name("createNewCanvas")
+    static let openNoteInEditor = Notification.Name("openNoteInEditor")
 }

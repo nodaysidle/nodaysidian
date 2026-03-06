@@ -8,13 +8,17 @@ struct SidebarView: View {
 
     @State private var hoverNoteId: UUID?
     @State private var hoverCanvasId: UUID?
+    @State private var renamingCanvasId: UUID?
+    @State private var renamingCanvasTitle: String = ""
 
     var body: some View {
         VStack(spacing: 0) {
             header
             searchBar
             noteList
-            canvasSection
+            if !whiteboard.canvases.isEmpty {
+                canvasSection
+            }
             sidebarFooter
         }
         .background(LatticeTheme.deepSpace)
@@ -25,13 +29,11 @@ struct SidebarView: View {
     private var header: some View {
         HStack(alignment: .center) {
             VStack(alignment: .leading, spacing: 5) {
-                // Logotype — wide tracked, semibold, small caps feel
-                Text("NODAYSIDLE")
+                Text("nodaysidian")
                     .font(.system(size: 11, weight: .semibold, design: .rounded))
                     .tracking(3.5)
                     .foregroundStyle(LatticeTheme.textPrimary)
 
-                // Note count — monospaced for the number, muted label
                 HStack(spacing: 3) {
                     Text("\(vault.notes.count)")
                         .font(.system(size: 11, weight: .regular, design: .monospaced))
@@ -44,9 +46,9 @@ struct SidebarView: View {
 
             Spacer()
 
-            // New note button — plain icon, mint accent
             Button {
                 vault.createNote()
+                graph.reload()
             } label: {
                 Image(systemName: "plus")
                     .font(.system(size: 13, weight: .medium))
@@ -63,6 +65,7 @@ struct SidebarView: View {
             }
             .buttonStyle(.plain)
             .help("New Note")
+            .accessibilityLabel("New Note")
         }
         .padding(.horizontal, 16)
         .padding(.top, 16)
@@ -118,8 +121,7 @@ struct SidebarView: View {
                     }
                     .contextMenu {
                         Button("Delete", role: .destructive) {
-                            vault.deleteNote(note)
-                            graph.reload()
+                            vault.confirmDelete(note)
                         }
                     }
                 }
@@ -149,15 +151,12 @@ struct SidebarView: View {
 
                 Spacer()
 
-                // Canvas count
                 Text("\(whiteboard.canvases.count)")
                     .font(.system(size: 10, weight: .regular, design: .monospaced))
                     .foregroundStyle(LatticeTheme.textMuted)
 
-                // New canvas button
                 Button {
-                    whiteboard.createCanvas()
-                    if let canvas = whiteboard.canvases.first {
+                    if let canvas = whiteboard.createCanvas() {
                         onSelectCanvas?(canvas)
                     }
                 } label: {
@@ -176,6 +175,7 @@ struct SidebarView: View {
                 }
                 .buttonStyle(.plain)
                 .help("New Canvas")
+                .accessibilityLabel("New Canvas")
             }
             .padding(.horizontal, 16)
             .padding(.top, 8)
@@ -185,23 +185,64 @@ struct SidebarView: View {
             ScrollView {
                 LazyVStack(spacing: 1) {
                     ForEach(whiteboard.canvases, id: \.id) { canvas in
-                        CanvasListItem(
-                            canvas: canvas,
-                            isSelected: whiteboard.selectedCanvas?.id == canvas.id,
-                            isHovered: hoverCanvasId == canvas.id
-                        )
-                        .onTapGesture {
-                            withAnimation(.easeOut(duration: 0.18)) {
-                                whiteboard.selectCanvas(canvas)
-                                onSelectCanvas?(canvas)
+                        if renamingCanvasId == canvas.id {
+                            // Inline rename field
+                            HStack(spacing: 10) {
+                                Image(systemName: "square.on.square")
+                                    .font(.system(size: 11, weight: .medium))
+                                    .foregroundStyle(LatticeTheme.lavender)
+                                    .frame(width: 16)
+                                TextField("Canvas name", text: $renamingCanvasTitle)
+                                    .textFieldStyle(.plain)
+                                    .font(.system(size: 13, weight: .semibold, design: .default))
+                                    .foregroundStyle(LatticeTheme.textPrimary)
+                                    .onSubmit {
+                                        whiteboard.renameCanvas(canvas, to: renamingCanvasTitle)
+                                        renamingCanvasId = nil
+                                    }
+                                    .onExitCommand {
+                                        renamingCanvasId = nil
+                                    }
                             }
-                        }
-                        .onHover { hover in
-                            hoverCanvasId = hover ? canvas.id : nil
-                        }
-                        .contextMenu {
-                            Button("Delete", role: .destructive) {
-                                whiteboard.deleteCanvas(canvas)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 8)
+                            .background {
+                                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                    .fill(LatticeTheme.lavender.opacity(0.12))
+                                    .overlay {
+                                        RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                            .strokeBorder(LatticeTheme.lavender.opacity(0.4), lineWidth: 1)
+                                    }
+                            }
+                        } else {
+                            CanvasListItem(
+                                canvas: canvas,
+                                isSelected: whiteboard.selectedCanvas?.id == canvas.id,
+                                isHovered: hoverCanvasId == canvas.id
+                            )
+                            // Double-tap first so SwiftUI can distinguish from single-tap
+                            .onTapGesture(count: 2) {
+                                renamingCanvasTitle = canvas.title
+                                renamingCanvasId = canvas.id
+                            }
+                            .onTapGesture {
+                                withAnimation(.easeOut(duration: 0.18)) {
+                                    whiteboard.selectCanvas(canvas)
+                                    onSelectCanvas?(canvas)
+                                }
+                            }
+                            .onHover { hover in
+                                hoverCanvasId = hover ? canvas.id : nil
+                            }
+                            .contextMenu {
+                                Button("Rename") {
+                                    renamingCanvasTitle = canvas.title
+                                    renamingCanvasId = canvas.id
+                                }
+                                Divider()
+                                Button("Delete", role: .destructive) {
+                                    whiteboard.deleteCanvas(canvas)
+                                }
                             }
                         }
                     }
@@ -229,6 +270,7 @@ struct SidebarView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.horizontal, 12)
                         .padding(.top, 8)
+                        .transition(.opacity)
                 }
 
                 Button {
@@ -257,6 +299,7 @@ struct SidebarView: View {
                 .padding(.bottom, 12)
                 .padding(.top, 8)
             }
+            .animation(.easeInOut(duration: 0.3), value: vault.importMessage)
         }
     }
 }

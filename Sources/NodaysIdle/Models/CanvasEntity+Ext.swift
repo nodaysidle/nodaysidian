@@ -27,7 +27,8 @@ extension CanvasEntity {
     }
 
     var elementCount: Int {
-        elements.count
+        guard let data = elementsData, !data.isEmpty else { return 0 }
+        return (try? JSONDecoder().decode([CanvasElement].self, from: data).count) ?? 0
     }
 
     static func create(

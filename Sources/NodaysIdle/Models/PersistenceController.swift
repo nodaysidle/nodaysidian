@@ -6,6 +6,7 @@ final class PersistenceController: Sendable {
     static let shared = PersistenceController()
 
     let container: NSPersistentContainer
+    var loadError: Error?
 
     private init() {
         let model = Self.buildModel()
@@ -17,9 +18,10 @@ final class PersistenceController: Sendable {
         description.shouldInferMappingModelAutomatically = true
         container.persistentStoreDescriptions = [description]
 
-        container.loadPersistentStores { _, error in
+        container.loadPersistentStores { [self] _, error in
             if let error {
-                fatalError("Core Data store failed: \(error.localizedDescription)")
+                self.loadError = error
+                print("[Nodaysidian] Core Data store failed to load: \(error.localizedDescription)")
             }
         }
         container.viewContext.automaticallyMergesChangesFromParent = true

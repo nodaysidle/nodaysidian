@@ -1,4 +1,5 @@
 import SwiftUI
+import CoreData
 
 struct NoteEditorView: View {
     @ObservedObject var note: NoteEntity
@@ -7,6 +8,7 @@ struct NoteEditorView: View {
     @State private var editingTitle: String = ""
     @State private var editingContent: String = ""
     @State private var showMetadata: Bool = false
+    @State private var autosaveTask: Task<Void, Never>?
     @FocusState private var isTitleFocused: Bool
     @FocusState private var isContentFocused: Bool
 
@@ -27,9 +29,67 @@ struct NoteEditorView: View {
             editingTitle   = note.title
             editingContent = note.content
         }
-        .onChange(of: note.id) {
+        .onDisappear {
+            flushSave()
+        }
+        .onChange(of: note.id) { oldId, newId in
+            // Cancel pending autosave — it would target the wrong note
+            autosaveTask?.cancel()
+            autosaveTask = nil
+            // Save old editing buffers to the OLD note, not the new one
+            if oldId != newId, let ctx = note.managedObjectContext {
+                let req = NoteEntity.fetchRequest()
+                req.predicate = NSPredicate(format: "id == %@", oldId as CVarArg)
+                if let oldNote = try? ctx.fetch(req).first {
+                    oldNote.title = editingTitle
+                    oldNote.content = editingContent
+                    oldNote.modifiedAt = Date()
+                    do { try ctx.save() } catch {
+                        print("[Nodaysidian] Failed to save old note on switch: \(error.localizedDescription)")
+                    }
+                }
+            }
+            // Now load the new note's data
             editingTitle   = note.title
             editingContent = note.content
+        }
+    }
+
+    // MARK: - Autosave (ID-pinned — immune to note reference swaps)
+
+    /// Debounced save — waits 1.5s after last edit, then persists to disk.
+    /// Captures the note ID at call time so it always targets the correct note.
+    private func scheduleAutosave() {
+        autosaveTask?.cancel()
+        let pinnedId = note.id
+        let pinnedCtx = note.managedObjectContext
+        autosaveTask = Task {
+            try? await Task.sleep(for: .seconds(1.5))
+            guard !Task.isCancelled else { return }
+            saveToNote(id: pinnedId, context: pinnedCtx)
+        }
+    }
+
+    /// Immediate save — used by Save button and view disappear.
+    /// Captures the note ID at call time so it always targets the correct note.
+    private func flushSave() {
+        autosaveTask?.cancel()
+        autosaveTask = nil
+        saveToNote(id: note.id, context: note.managedObjectContext)
+    }
+
+    /// Core save: fetches a specific note by its pinned UUID, writes buffers, persists.
+    /// Never references `note` directly — completely safe across note switches.
+    private func saveToNote(id: UUID, context: NSManagedObjectContext?) {
+        guard let ctx = context else { return }
+        let req = NoteEntity.fetchRequest()
+        req.predicate = NSPredicate(format: "id == %@", id as CVarArg)
+        guard let target = try? ctx.fetch(req).first else { return }
+        target.title = editingTitle
+        target.content = editingContent
+        target.modifiedAt = Date()
+        do { try ctx.save() } catch {
+            print("[Nodaysidian] Failed to autosave note: \(error.localizedDescription)")
         }
     }
 
@@ -48,9 +108,11 @@ struct NoteEditorView: View {
                 .foregroundStyle(LatticeTheme.textPrimary)
                 .focused($isTitleFocused)
                 .onSubmit {
-                    note.title = editingTitle
-                    vault.saveNote()
+                    flushSave()
                     isContentFocused = true
+                }
+                .onChange(of: editingTitle) {
+                    scheduleAutosave()
                 }
 
             Spacer()
@@ -85,8 +147,7 @@ struct NoteEditorView: View {
                     .padding(.horizontal, 24)
                     .padding(.vertical, 20)
                     .onChange(of: editingContent) {
-                        note.content   = editingContent
-                        note.modifiedAt = Date()
+                        scheduleAutosave()
                     }
             }
 
@@ -119,7 +180,7 @@ struct NoteEditorView: View {
                     metadataRow(label: "Modified",
                                 value: note.modifiedAt?.formatted(date: .abbreviated, time: .shortened) ?? "—")
                     metadataRow(label: "Words",
-                                value: "\(note.content.split(separator: " ").count)")
+                                value: "\(note.content.components(separatedBy: .whitespacesAndNewlines).filter { !$0.isEmpty }.count)")
                     metadataRow(label: "Characters",
                                 value: "\(note.content.count)")
 
@@ -186,9 +247,7 @@ struct NoteEditorView: View {
                 .padding(.trailing, 8)
 
             Button("Save") {
-                note.title   = editingTitle
-                note.content = editingContent
-                vault.saveNote()
+                flushSave()
             }
             .buttonStyle(.plain)
             .font(.system(size: 12, weight: .medium, design: .default))

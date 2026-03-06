@@ -6,6 +6,7 @@ struct GraphCanvasView: View {
 
     @State private var draggedNodeId: UUID?
     @State private var hoverNodeId: UUID?
+    @State private var lastMagnification: CGFloat = 1.0
 
     var body: some View {
         ZStack {
@@ -122,10 +123,16 @@ struct GraphCanvasView: View {
             }
         }
         .position(x: center.x + node.x, y: center.y + node.y)
+        .accessibilityLabel("\(node.title), ripeness \(Int(node.ripeness * 100))%, \(node.connectionCount) connections")
         .onHover { hovering in
             withAnimation(.easeOut(duration: 0.12)) {
                 hoverNodeId = hovering ? node.id : nil
             }
+        }
+        .onTapGesture(count: 2) {
+            // Double-click opens note in editor
+            vault.selectedNote = vault.notes.first { $0.id == node.id }
+            NotificationCenter.default.post(name: .openNoteInEditor, object: node.id)
         }
         .onTapGesture {
             withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
@@ -148,19 +155,29 @@ struct GraphCanvasView: View {
         .animation(.easeOut(duration: 0.08), value: node.y)
     }
 
-    // MARK: - Gestures
+    // MARK: - Gestures (accumulating offset/scale)
 
     private var panGesture: some Gesture {
         DragGesture()
             .onChanged { value in
-                graph.canvasOffset = value.translation
+                graph.canvasOffset = CGSize(
+                    width: graph.savedOffset.width + value.translation.width,
+                    height: graph.savedOffset.height + value.translation.height
+                )
+            }
+            .onEnded { _ in
+                graph.savedOffset = graph.canvasOffset
             }
     }
 
     private var magnifyGesture: some Gesture {
         MagnifyGesture()
             .onChanged { value in
-                graph.canvasScale = max(0.3, min(3.0, value.magnification))
+                let newScale = lastMagnification * value.magnification
+                graph.canvasScale = max(0.3, min(3.0, newScale))
+            }
+            .onEnded { _ in
+                lastMagnification = graph.canvasScale
             }
     }
 
@@ -192,17 +209,22 @@ struct GraphCanvasView: View {
                     .foregroundStyle(LatticeTheme.textMuted)
             }
 
-            if graph.isSimulating {
+            // Simulation toggle
+            Button {
+                graph.toggleSimulation()
+            } label: {
                 HStack(spacing: 5) {
                     Circle()
-                        .fill(LatticeTheme.amber)
+                        .fill(graph.isSimulating ? LatticeTheme.amber : LatticeTheme.textMuted)
                         .frame(width: 5, height: 5)
-                        .modifier(PulseModifier())
-                    Text("simulating")
+                        .modifier(graph.isSimulating ? PulseModifier() : PulseModifier(disabled: true))
+                    Text(graph.isSimulating ? "simulating" : "frozen")
                         .font(LatticeTheme.captionFont)
                         .foregroundStyle(LatticeTheme.textMuted)
                 }
             }
+            .buttonStyle(.plain)
+            .help(graph.isSimulating ? "Freeze layout" : "Resume simulation")
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
@@ -220,15 +242,18 @@ struct GraphCanvasView: View {
 // MARK: - Pulse Animation
 
 struct PulseModifier: ViewModifier {
+    var disabled: Bool = false
     @State private var isPulsing = false
 
     func body(content: Content) -> some View {
         content
-            .opacity(isPulsing ? 0.3 : 1.0)
+            .opacity(disabled ? 1.0 : (isPulsing ? 0.3 : 1.0))
             .animation(
-                .easeInOut(duration: 1.0).repeatForever(autoreverses: true),
+                disabled ? nil : .easeInOut(duration: 1.0).repeatForever(autoreverses: true),
                 value: isPulsing
             )
-            .onAppear { isPulsing = true }
+            .onAppear {
+                if !disabled { isPulsing = true }
+            }
     }
 }

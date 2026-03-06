@@ -61,6 +61,7 @@ struct MainView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .createNewNote)) { _ in
             vault.createNote()
+            graph.reload()
             viewMode = .editor
         }
         .onReceive(NotificationCenter.default.publisher(for: .importVault)) { _ in
@@ -71,11 +72,15 @@ struct MainView: View {
             graph.reload()
         }
         .onReceive(NotificationCenter.default.publisher(for: .createNewCanvas)) { _ in
-            whiteboard.createCanvas()
-            if let canvas = whiteboard.canvases.first {
+            if let canvas = whiteboard.createCanvas() {
                 whiteboard.selectCanvas(canvas)
             }
             viewMode = .whiteboard
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .openNoteInEditor)) { _ in
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                viewMode = .editor
+            }
         }
         .fileImporter(
             isPresented: $vault.showImportPanel,
@@ -87,10 +92,26 @@ struct MainView: View {
                 graph.reload()
             }
         }
-        .onChange(of: vault.selectedNote?.id) { oldValue, newValue in
-            if newValue != nil && viewMode == .graph {
-                // Don't auto-switch from graph — user might just be highlighting
-            } else if newValue != nil {
+        .confirmationDialog(
+            "Delete Note",
+            isPresented: $vault.showDeleteConfirmation,
+            presenting: vault.noteToDelete
+        ) { note in
+            Button("Delete", role: .destructive) {
+                vault.deleteNote(note)
+                graph.reload()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: { note in
+            Text("Are you sure you want to delete \"\(note.displayTitle)\"? This will also remove all its edges.")
+        }
+        .onChange(of: viewMode) { _, newMode in
+            if newMode == .graph {
+                graph.reload()
+            }
+        }
+        .onChange(of: vault.selectedNote?.id) { _, newValue in
+            if newValue != nil && viewMode != .whiteboard {
                 viewMode = .editor
             }
         }
@@ -105,7 +126,7 @@ struct MainView: View {
             VStack(spacing: 32) {
                 // Wordmark — large, ultra-light, wide tracked
                 VStack(spacing: 10) {
-                    Text("NODAYSIDLE")
+                    Text("nodaysidian")
                         .font(.system(size: 36, weight: .ultraLight, design: .rounded))
                         .tracking(10)
                         .foregroundStyle(LatticeTheme.textPrimary)
@@ -178,8 +199,7 @@ struct MainView: View {
                     title: "Create a Canvas",
                     color: LatticeTheme.lavender
                 ) {
-                    whiteboard.createCanvas()
-                    if let canvas = whiteboard.canvases.first {
+                    if let canvas = whiteboard.createCanvas() {
                         whiteboard.selectCanvas(canvas)
                     }
                 }
@@ -218,52 +238,31 @@ struct MainView: View {
         .buttonStyle(.plain)
     }
 
-    // MARK: - Toolbar
+    // MARK: - Toolbar (with active-state pill)
 
     @ToolbarContentBuilder
     private var toolbarButtons: some ToolbarContent {
         ToolbarItem {
-            Button {
-                withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                    viewMode = .graph
-                }
-            } label: {
-                Image(systemName: "point.3.connected.trianglepath.dotted")
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(viewMode == .graph ? LatticeTheme.mint : LatticeTheme.textMuted)
+            HStack(spacing: 2) {
+                modeButton(mode: .graph, icon: "point.3.connected.trianglepath.dotted", label: "Graph")
+                modeButton(mode: .editor, icon: "doc.text", label: "Editor")
+                modeButton(mode: .whiteboard, icon: "square.on.square", label: "Whiteboard")
             }
-            .help("Graph")
-        }
-
-        ToolbarItem {
-            Button {
-                withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                    viewMode = .editor
-                }
-            } label: {
-                Image(systemName: "doc.text")
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(viewMode == .editor ? LatticeTheme.mint : LatticeTheme.textMuted)
+            .padding(2)
+            .background {
+                RoundedRectangle(cornerRadius: 7, style: .continuous)
+                    .fill(LatticeTheme.surface)
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 7, style: .continuous)
+                            .strokeBorder(LatticeTheme.border, lineWidth: 1)
+                    }
             }
-            .help("Editor")
-        }
-
-        ToolbarItem {
-            Button {
-                withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                    viewMode = .whiteboard
-                }
-            } label: {
-                Image(systemName: "square.on.square")
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(viewMode == .whiteboard ? LatticeTheme.lavender : LatticeTheme.textMuted)
-            }
-            .help("Whiteboard")
         }
 
         ToolbarItem {
             Button {
                 vault.createNote()
+                graph.reload()
                 viewMode = .editor
             } label: {
                 Image(systemName: "plus")
@@ -271,6 +270,32 @@ struct MainView: View {
                     .foregroundStyle(LatticeTheme.mint)
             }
             .help("New Note")
+            .accessibilityLabel("New Note")
         }
+    }
+
+    private func modeButton(mode: ViewMode, icon: String, label: String) -> some View {
+        let isActive = viewMode == mode
+        let accentColor = mode == .whiteboard ? LatticeTheme.lavender : LatticeTheme.mint
+
+        return Button {
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                viewMode = mode
+            }
+        } label: {
+            Image(systemName: icon)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(isActive ? accentColor : LatticeTheme.textMuted)
+                .frame(width: 28, height: 24)
+                .background {
+                    if isActive {
+                        RoundedRectangle(cornerRadius: 5, style: .continuous)
+                            .fill(accentColor.opacity(0.15))
+                    }
+                }
+        }
+        .buttonStyle(.plain)
+        .help(label)
+        .accessibilityLabel(label)
     }
 }
