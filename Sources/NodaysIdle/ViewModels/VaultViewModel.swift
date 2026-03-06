@@ -54,7 +54,15 @@ final class VaultViewModel {
     func deleteNote(_ note: NoteEntity) {
         guard let context else { return }
         let noteId = note.id
-        // Delete associated edges
+
+        // Clear selection BEFORE deletion to prevent SwiftUI from
+        // accessing .id on a deleted Core Data object (UUID bridge crash)
+        if selectedNote?.id == noteId {
+            selectedNote = nil
+        }
+        notes.removeAll { $0.id == noteId }
+
+        // Now safe to delete from Core Data
         let edgeReq = EdgeEntity.fetchRequest()
         if let edges = try? context.fetch(edgeReq) {
             for edge in edges where edge.sourceId == noteId || edge.targetId == noteId {
@@ -64,10 +72,6 @@ final class VaultViewModel {
         context.delete(note)
         do { try context.save() } catch {
             print("[Nodaysidian] Failed to delete note: \(error.localizedDescription)")
-        }
-        notes.removeAll { $0.id == noteId }
-        if selectedNote?.id == noteId {
-            selectedNote = nil
         }
     }
 

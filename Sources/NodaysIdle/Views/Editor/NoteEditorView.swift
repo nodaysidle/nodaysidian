@@ -13,6 +13,9 @@ struct NoteEditorView: View {
     @FocusState private var isContentFocused: Bool
 
     var body: some View {
+        if note.isDeleted || note.managedObjectContext == nil {
+            Color.clear
+        } else {
         VStack(spacing: 0) {
             editorHeader
             Rectangle()
@@ -53,6 +56,7 @@ struct NoteEditorView: View {
             editingTitle   = note.title
             editingContent = note.content
         }
+        } // else (not deleted)
     }
 
     // MARK: - Autosave (ID-pinned — immune to note reference swaps)
@@ -75,6 +79,7 @@ struct NoteEditorView: View {
     private func flushSave() {
         autosaveTask?.cancel()
         autosaveTask = nil
+        guard !note.isDeleted, note.managedObjectContext != nil else { return }
         saveToNote(id: note.id, context: note.managedObjectContext)
     }
 
