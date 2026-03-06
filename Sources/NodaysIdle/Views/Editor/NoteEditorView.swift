@@ -142,19 +142,17 @@ struct NoteEditorView: View {
 
     private var editorBody: some View {
         HStack(spacing: 0) {
-            ScrollView {
-                TextEditor(text: $editingContent)
-                    .font(.system(size: 14, weight: .regular, design: .default))
-                    .foregroundStyle(LatticeTheme.textPrimary)
-                    .scrollContentBackground(.hidden)
-                    .focused($isContentFocused)
-                    .frame(minHeight: 400)
-                    .padding(.horizontal, 24)
-                    .padding(.vertical, 20)
-                    .onChange(of: editingContent) {
-                        scheduleAutosave()
-                    }
-            }
+            TextEditor(text: $editingContent)
+                .font(.system(size: 14, weight: .regular, design: .default))
+                .foregroundStyle(LatticeTheme.textPrimary)
+                .scrollContentBackground(.hidden)
+                .focused($isContentFocused)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .padding(.horizontal, 24)
+                .padding(.vertical, 20)
+                .onChange(of: editingContent) {
+                    scheduleAutosave()
+                }
 
             if showMetadata {
                 HStack(spacing: 0) {
