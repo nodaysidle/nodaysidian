@@ -31,7 +31,7 @@ struct SidebarView: View {
             VStack(alignment: .leading, spacing: 5) {
                 Text("NODAYSIDIAN")
                     .font(.system(size: 11, weight: .semibold, design: .rounded))
-                    .tracking(3.5)
+                    .tracking(6)
                     .foregroundStyle(LatticeTheme.textPrimary)
 
                 HStack(spacing: 3) {

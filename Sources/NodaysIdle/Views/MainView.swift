@@ -128,7 +128,7 @@ struct MainView: View {
                 VStack(spacing: 10) {
                     Text("NODAYSIDIAN")
                         .font(.system(size: 36, weight: .ultraLight, design: .rounded))
-                        .tracking(10)
+                        .tracking(14)
                         .foregroundStyle(LatticeTheme.textPrimary)
 
                     Text("Your knowledge, always working.")
