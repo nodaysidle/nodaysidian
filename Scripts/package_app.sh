@@ -48,7 +48,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 <plist version="1.0">
 <dict>
     <key>CFBundleName</key><string>${APP_NAME}</string>
-    <key>CFBundleDisplayName</key><string>Nodaysidian</string>
+    <key>CFBundleDisplayName</key><string>nodaysidian</string>
     <key>CFBundleIdentifier</key><string>${BUNDLE_ID}</string>
     <key>CFBundleExecutable</key><string>${EXECUTABLE_NAME}</string>
     <key>CFBundlePackageType</key><string>APPL</string>
