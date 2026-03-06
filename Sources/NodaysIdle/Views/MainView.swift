@@ -126,7 +126,7 @@ struct MainView: View {
             VStack(spacing: 32) {
                 // Wordmark — large, ultra-light, wide tracked
                 VStack(spacing: 10) {
-                    Text("nodaysidian")
+                    Text("NODAYSIDIAN")
                         .font(.system(size: 36, weight: .ultraLight, design: .rounded))
                         .tracking(10)
                         .foregroundStyle(LatticeTheme.textPrimary)

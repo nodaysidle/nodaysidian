@@ -29,7 +29,7 @@ struct SidebarView: View {
     private var header: some View {
         HStack(alignment: .center) {
             VStack(alignment: .leading, spacing: 5) {
-                Text("nodaysidian")
+                Text("NODAYSIDIAN")
                     .font(.system(size: 11, weight: .semibold, design: .rounded))
                     .tracking(3.5)
                     .foregroundStyle(LatticeTheme.textPrimary)
