@@ -1,12 +1,17 @@
 <p align="center">
   <br />
-  <br />
   <samp>n o d a y s i d i a n</samp>
   <br />
   <br />
   <strong>The knowledge graph that thinks while you write.</strong>
   <br />
   <sub>On-device AI. Zero cloud. Pure macOS native.</sub>
+  <br />
+  <br />
+  <img src="https://img.shields.io/badge/Platform-macOS%2015%2B-black?style=flat-square&logo=apple&logoColor=white" alt="Platform">
+  <img src="https://img.shields.io/badge/Swift-6.2-orange?style=flat-square&logo=swift&logoColor=white" alt="Swift">
+  <img src="https://img.shields.io/badge/NLEmbedding-on--device-5856D6?style=flat-square" alt="On-device AI">
+  <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="License">
   <br />
   <br />
   <a href="#install">Install</a> &middot; <a href="#how-it-works">How It Works</a> &middot; <a href="#why-nodaysidian">Why nodaysidian</a> &middot; <a href="#workflow">Workflow</a>
@@ -172,8 +177,8 @@ This computes embeddings, discovers auto-edges, and updates ripeness scores. Als
 ### Build and install
 
 ```bash
-git clone https://github.com/salvadalba/nodaysidle-nodaysidian.git
-cd nodaysidle-nodaysidian
+git clone https://gitlab.com/NODAYSIDLE/nodaysidian.git
+cd nodaysidian
 
 # Build + install to /Applications + launch
 bash Scripts/install.sh
@@ -289,7 +294,5 @@ MIT
 ---
 
 <p align="center">
-  <sub>Built with Swift, SwiftUI, Core Data, and NaturalLanguage.</sub>
-  <br />
-  <sub>No Electron was harmed in the making of this app.</sub>
+  Built by <a href="https://gitlab.com/NODAYSIDLE">NODAYSIDLE</a>
 </p>
