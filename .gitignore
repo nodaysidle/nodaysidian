@@ -8,3 +8,7 @@ xcuserdata/
 DerivedData/
 *.icns
 .swiftpm/
+*.dmg
+*.tar.gz
+*.xcresult
+*.dSYM

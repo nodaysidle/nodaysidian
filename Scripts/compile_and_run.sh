@@ -2,16 +2,17 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-APP_NAME="NodaysIdle"
+APP_NAME="Nodaysidian"
+EXECUTABLE_NAME="NodaysIdle"
 APP_BUNDLE="${ROOT_DIR}/${APP_NAME}.app"
-APP_PROCESS_PATTERN="${APP_NAME}.app/Contents/MacOS/${APP_NAME}"
+APP_PROCESS_PATTERN="${APP_NAME}.app/Contents/MacOS/${EXECUTABLE_NAME}"
 
 log() { printf '%s\n' "$*"; }
 fail() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
 
 log "==> Killing existing ${APP_NAME} instances"
 pkill -f "${APP_PROCESS_PATTERN}" 2>/dev/null || true
-pkill -x "${APP_NAME}" 2>/dev/null || true
+pkill -x "${EXECUTABLE_NAME}" 2>/dev/null || true
 sleep 0.5
 
 HOST_ARCH="$(uname -m)"
@@ -22,7 +23,7 @@ SIGNING_MODE=adhoc ARCHES="${HOST_ARCH}" "${ROOT_DIR}/Scripts/package_app.sh" re
 log "==> Launching app"
 if ! open "${APP_BUNDLE}"; then
   log "WARN: open failed; launching binary directly."
-  "${APP_BUNDLE}/Contents/MacOS/${APP_NAME}" >/dev/null 2>&1 &
+  "${APP_BUNDLE}/Contents/MacOS/${EXECUTABLE_NAME}" >/dev/null 2>&1 &
   disown
 fi
 
