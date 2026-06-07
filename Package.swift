@@ -10,6 +10,10 @@ let package = Package(
         .executableTarget(
             name: "NodaysIdle",
             path: "Sources/NodaysIdle"
+        ),
+        .testTarget(
+            name: "NodaysIdleTests",
+            path: "Tests/NodaysIdleTests"
         )
     ]
 )

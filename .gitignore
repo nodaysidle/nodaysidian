@@ -12,3 +12,4 @@ DerivedData/
 *.tar.gz
 *.xcresult
 *.dSYM
+docs/codex-handoffs/

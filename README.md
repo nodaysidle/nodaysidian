@@ -40,9 +40,9 @@ It stores data locally with Core Data, parses `[[wiki-links]]`, computes semanti
 
 ## Download
 
-Download the latest macOS build from the GitLab releases page:
+Download the latest macOS build from GitHub Releases:
 
-[Download latest release](https://gitlab.com/NODAYSIDLE/nodaysidian/-/releases/latest)
+[Download latest release](https://github.com/nodaysidle/nodaysidian/releases/latest)
 
 Requirements:
 
@@ -119,7 +119,7 @@ Tech stack:
 ## Build from source
 
 ```bash
-git clone https://gitlab.com/NODAYSIDLE/nodaysidian.git
+git clone https://github.com/nodaysidle/nodaysidian.git
 cd nodaysidian
 swift build -c release
 ```
@@ -149,7 +149,7 @@ hdiutil verify Nodaysidian.dmg
 shasum -a 256 Nodaysidian.dmg Nodaysidian_*.tar.gz
 ```
 
-There is currently no separate automated test target in `Tests/`; `swift test` confirms the package builds but exits with SwiftPM’s `no tests found` status.
+The repository includes a lightweight XCTest target that verifies release-critical packaging contracts, README links, privacy claims, and ignored generated artifacts.
 
 ## Privacy
 
@@ -168,5 +168,5 @@ MIT
 ---
 
 <p align="center">
-  Built by <a href="https://gitlab.com/NODAYSIDLE">NODAYSIDLE</a>
+  Built by <a href="https://github.com/nodaysidle">NODAYSIDLE</a>
 </p>
