@@ -5,8 +5,13 @@ import CoreData
 @Observable
 final class VaultViewModel {
     var notes: [NoteEntity] = []
+    var filteredNotes: [NoteEntity] = []
     var selectedNote: NoteEntity?
-    var searchText: String = ""
+    var searchText: String = "" {
+        didSet {
+            scheduleFilteredNotesUpdate()
+        }
+    }
     var isImporting: Bool = false
     var importMessage: String?
     var showImportPanel: Bool = false
@@ -15,15 +20,7 @@ final class VaultViewModel {
 
     private var context: NSManagedObjectContext?
     private var importMessageTask: Task<Void, Never>?
-
-    var filteredNotes: [NoteEntity] {
-        guard !searchText.isEmpty else { return notes }
-        let query = searchText.lowercased()
-        return notes.filter {
-            $0.title.lowercased().contains(query) ||
-            $0.content.lowercased().contains(query)
-        }
-    }
+    private var searchDebounceTask: Task<Void, Never>?
 
     func bind(context: NSManagedObjectContext) {
         self.context = context
@@ -34,6 +31,28 @@ final class VaultViewModel {
         guard let context else { return }
         let req = NoteEntity.fetchAll()
         notes = (try? context.fetch(req)) ?? []
+        recomputeFilteredNotes()
+    }
+
+    private func scheduleFilteredNotesUpdate() {
+        searchDebounceTask?.cancel()
+        searchDebounceTask = Task {
+            try? await Task.sleep(for: .milliseconds(250))
+            guard !Task.isCancelled else { return }
+            recomputeFilteredNotes()
+        }
+    }
+
+    private func recomputeFilteredNotes() {
+        guard !searchText.isEmpty else {
+            filteredNotes = notes
+            return
+        }
+        let query = searchText.lowercased()
+        filteredNotes = notes.filter {
+            $0.title.lowercased().contains(query) ||
+            $0.content.lowercased().contains(query)
+        }
     }
 
     func createNote() {
@@ -43,6 +62,7 @@ final class VaultViewModel {
             print("[Nodaysidian] Failed to save new note: \(error.localizedDescription)")
         }
         notes.insert(note, at: 0)
+        recomputeFilteredNotes()
         selectedNote = note
     }
 
@@ -73,6 +93,7 @@ final class VaultViewModel {
         do { try context.save() } catch {
             print("[Nodaysidian] Failed to delete note: \(error.localizedDescription)")
         }
+        recomputeFilteredNotes()
     }
 
     func saveNote() {

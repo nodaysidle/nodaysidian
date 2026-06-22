@@ -9,32 +9,46 @@ actor AutoEdgeDiscovery {
         let notes: [NoteSnapshot] = await MainActor.run {
             let req = NoteEntity.fetchAll()
             guard let entities = try? context.fetch(req) else { return [] }
-            return entities.map { NoteSnapshot(id: $0.id, content: $0.content, existingEmbedding: $0.embedding) }
+            return entities.map {
+                NoteSnapshot(
+                    id: $0.id,
+                    content: $0.content,
+                    contentHash: $0.currentContentHash,
+                    storedHash: $0.embeddingContentHash,
+                    existingEmbedding: $0.embedding
+                )
+            }
         }
 
         guard notes.count > 1 else { return }
 
-        // Generate embeddings for notes that don't have them
         var embeddings: [UUID: [Double]] = [:]
+        var updatedNoteIds: Set<UUID> = []
 
         for note in notes {
-            if let data = note.existingEmbedding {
+            let needsRefresh = note.existingEmbedding == nil || note.storedHash != note.contentHash
+
+            if !needsRefresh, let data = note.existingEmbedding {
                 embeddings[note.id] = await embeddingEngine.dataToEmbedding(data)
-            } else if let emb = await embeddingEngine.generateEmbedding(for: note.content) {
+                continue
+            }
+
+            if let emb = await embeddingEngine.generateEmbedding(for: note.content) {
                 embeddings[note.id] = emb
-                // Save embedding back to Core Data
+                updatedNoteIds.insert(note.id)
                 let embData = await embeddingEngine.embeddingToData(emb)
+                let contentHash = note.contentHash
                 await MainActor.run {
                     let req = NoteEntity.fetchRequest()
                     req.predicate = NSPredicate(format: "id == %@", note.id as CVarArg)
                     if let entity = try? context.fetch(req).first {
                         entity.embedding = embData
+                        entity.embeddingContentHash = contentHash
                     }
                 }
             }
         }
 
-        // Find existing auto-edges to avoid duplicates
         let existingPairs: Set<String> = await MainActor.run {
             let edgeReq = EdgeEntity.fetchRequest()
             edgeReq.predicate = NSPredicate(format: "isAutoDiscovered == YES")
@@ -42,17 +56,20 @@ actor AutoEdgeDiscovery {
             return Set(edges.map { edgePairKey($0.sourceId, $0.targetId) })
         }
 
-        // Compare all pairs
         var newEdges: [(UUID, UUID, Double)] = []
         let noteIds = Array(embeddings.keys)
+
+        if updatedNoteIds.isEmpty {
+            return
+        }
 
         for i in 0..<noteIds.count {
             for j in (i + 1)..<noteIds.count {
                 let idA = noteIds[i]
                 let idB = noteIds[j]
 
-                guard let embA = embeddings[idA],
-                      let embB = embeddings[idB] else { continue }
+                guard updatedNoteIds.contains(idA) || updatedNoteIds.contains(idB) else { continue }
+                guard let embA = embeddings[idA], let embB = embeddings[idB] else { continue }
 
                 let pairKey = edgePairKey(idA, idB)
                 guard !existingPairs.contains(pairKey) else { continue }
@@ -64,7 +81,6 @@ actor AutoEdgeDiscovery {
             }
         }
 
-        // Create auto-edges
         if !newEdges.isEmpty {
             await MainActor.run {
                 for (sourceId, targetId, strength) in newEdges {
@@ -91,5 +107,7 @@ actor AutoEdgeDiscovery {
 private struct NoteSnapshot: Sendable {
     let id: UUID
     let content: String
+    let contentHash: Int64
+    let storedHash: Int64
     let existingEmbedding: Data?
 }

@@ -17,10 +17,26 @@ struct MainView: View {
 
     var body: some View {
         NavigationSplitView(columnVisibility: $columnVisibility) {
-            SidebarView(vault: vault, graph: graph, whiteboard: whiteboard, onSelectCanvas: { canvas in
-                whiteboard.selectCanvas(canvas)
-                viewMode = .whiteboard
-            })
+            SidebarView(
+                vault: vault,
+                whiteboard: whiteboard,
+                onSelectNote: { _ in
+                    if viewMode != .whiteboard {
+                        viewMode = .editor
+                    }
+                },
+                onSelectNodeInGraph: { noteId in
+                    graph.selectNode(noteId)
+                },
+                onReloadGraph: {
+                    graph.invalidate()
+                    graph.reload()
+                },
+                onSelectCanvas: { canvas in
+                    whiteboard.selectCanvas(canvas)
+                    viewMode = .whiteboard
+                }
+            )
                 .navigationSplitViewColumnWidth(min: 240, ideal: 280, max: 360)
         } detail: {
             ZStack {
@@ -61,6 +77,7 @@ struct MainView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .createNewNote)) { _ in
             vault.createNote()
+            graph.invalidate()
             graph.reload()
             viewMode = .editor
         }
@@ -69,7 +86,8 @@ struct MainView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .intelligenceComplete)) { _ in
             vault.reload()
-            graph.reload()
+            graph.invalidate()
+            graph.refreshIfNeeded()
         }
         .onReceive(NotificationCenter.default.publisher(for: .createNewCanvas)) { _ in
             if let canvas = whiteboard.createCanvas() {
@@ -89,6 +107,7 @@ struct MainView: View {
         ) { result in
             if case .success(let urls) = result, let url = urls.first {
                 vault.importVault(url: url)
+                graph.invalidate()
                 graph.reload()
             }
         }
@@ -99,6 +118,7 @@ struct MainView: View {
         ) { note in
             Button("Delete", role: .destructive) {
                 vault.deleteNote(note)
+                graph.invalidate()
                 graph.reload()
             }
             Button("Cancel", role: .cancel) {}
@@ -106,8 +126,9 @@ struct MainView: View {
             Text("Are you sure you want to delete \"\(note.displayTitle)\"? This will also remove all its edges.")
         }
         .onChange(of: viewMode) { _, newMode in
+            graph.setGraphVisible(newMode == .graph)
             if newMode == .graph {
-                graph.reload()
+                graph.refreshIfNeeded()
             }
         }
         .onChange(of: vault.selectedNote?.id) { _, newValue in
@@ -262,6 +283,7 @@ struct MainView: View {
         ToolbarItem {
             Button {
                 vault.createNote()
+                graph.invalidate()
                 graph.reload()
                 viewMode = .editor
             } label: {

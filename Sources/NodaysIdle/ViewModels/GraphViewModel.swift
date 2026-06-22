@@ -12,6 +12,7 @@ final class GraphViewModel {
     var canvasOffset: CGSize = .zero
     var canvasScale: CGFloat = 1.0
     var isSimulating: Bool = true
+    var isGraphVisible: Bool = false
 
     // Accumulated gesture state
     var savedOffset: CGSize = .zero
@@ -21,6 +22,8 @@ final class GraphViewModel {
     private var simulationTimer: Timer?
     private var nodeIndex: [UUID: Int] = [:]
     private var alpha: Double = 1.0
+    private var needsReload = true
+    private var simulationWasPaused = false
 
     struct GraphNode: Identifiable, Sendable {
         let id: UUID
@@ -43,6 +46,16 @@ final class GraphViewModel {
 
     func bind(context: NSManagedObjectContext) {
         self.context = context
+        invalidate()
+        reload()
+    }
+
+    func invalidate() {
+        needsReload = true
+    }
+
+    func refreshIfNeeded() {
+        guard needsReload else { return }
         reload()
     }
 
@@ -60,12 +73,17 @@ final class GraphViewModel {
             map[e.targetId, default: 0] += 1
         }
 
+        let existingPositions = Dictionary(uniqueKeysWithValues: nodes.map { ($0.id, ($0.x, $0.y, $0.vx, $0.vy)) })
+
         self.nodes = notes.map { note in
-            GraphNode(
+            let existing = existingPositions[note.id]
+            return GraphNode(
                 id: note.id,
                 title: note.displayTitle,
-                x: note.posX,
-                y: note.posY,
+                x: existing?.0 ?? note.posX,
+                y: existing?.1 ?? note.posY,
+                vx: existing?.2 ?? 0,
+                vy: existing?.3 ?? 0,
                 ripeness: note.ripenessScore,
                 connectionCount: edgeCountMap[note.id] ?? 0
             )
@@ -81,21 +99,63 @@ final class GraphViewModel {
             )
         }
 
+        needsReload = false
         rebuildIndex()
-        startSimulation()
+
+        if isGraphVisible && isSimulating {
+            startSimulation()
+        }
     }
 
     private func rebuildIndex() {
         nodeIndex = Dictionary(uniqueKeysWithValues: nodes.enumerated().map { ($1.id, $0) })
     }
 
+    func setGraphVisible(_ visible: Bool) {
+        guard isGraphVisible != visible else { return }
+        isGraphVisible = visible
+
+        if visible {
+            refreshIfNeeded()
+            if isSimulating || simulationWasPaused {
+                resumeSimulation()
+            }
+        } else {
+            pauseSimulation()
+        }
+    }
+
     // MARK: - Force-Directed Simulation with Cooling
 
     func startSimulation() {
+        guard isGraphVisible else {
+            isSimulating = true
+            simulationWasPaused = true
+            return
+        }
+
         simulationTimer?.invalidate()
         alpha = 1.0
         isSimulating = true
+        simulationWasPaused = false
 
+        simulationTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / 60.0, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                self?.simulationStep()
+            }
+        }
+    }
+
+    func pauseSimulation() {
+        simulationWasPaused = isSimulating
+        simulationTimer?.invalidate()
+        simulationTimer = nil
+    }
+
+    func resumeSimulation() {
+        guard isGraphVisible, simulationTimer == nil else { return }
+        isSimulating = true
+        simulationWasPaused = false
         simulationTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / 60.0, repeats: true) { [weak self] _ in
             Task { @MainActor in
                 self?.simulationStep()
@@ -105,6 +165,7 @@ final class GraphViewModel {
 
     func stopSimulation() {
         isSimulating = false
+        simulationWasPaused = false
         simulationTimer?.invalidate()
         simulationTimer = nil
         savePositions()
@@ -118,6 +179,11 @@ final class GraphViewModel {
         }
     }
 
+    private struct GridKey: Hashable {
+        let x: Int
+        let y: Int
+    }
+
     private func simulationStep() {
         guard nodes.count > 1 else { return }
 
@@ -127,60 +193,93 @@ final class GraphViewModel {
         let centerPull: Double = 0.01
         let alphaDecay: Double = 0.995
         let alphaMin: Double = 0.005
+        let cellSize: Double = 100
 
-        // Apply cooling
         alpha *= alphaDecay
         if alpha < alphaMin {
             stopSimulation()
             return
         }
 
-        for i in nodes.indices {
-            var fx = 0.0, fy = 0.0
+        var updated = nodes
 
-            // Repulsion between all nodes
-            for j in nodes.indices where i != j {
-                let dx = nodes[i].x - nodes[j].x
-                let dy = nodes[i].y - nodes[j].y
-                let dist = max(sqrt(dx * dx + dy * dy), 1)
-                let force = repulsion / (dist * dist)
-                fx += (dx / dist) * force
-                fy += (dy / dist) * force
-            }
-
-            // Center gravity
-            fx -= nodes[i].x * centerPull
-            fy -= nodes[i].y * centerPull
-
-            nodes[i].vx = (nodes[i].vx + fx * alpha) * damping
-            nodes[i].vy = (nodes[i].vy + fy * alpha) * damping
+        var grid: [GridKey: [Int]] = [:]
+        for i in updated.indices {
+            let key = GridKey(
+                x: Int(updated[i].x / cellSize),
+                y: Int(updated[i].y / cellSize)
+            )
+            grid[key, default: []].append(i)
         }
 
-        // Attraction along edges — O(1) lookups via index
+        for i in updated.indices {
+            var fx = 0.0
+            var fy = 0.0
+            let cellX = Int(updated[i].x / cellSize)
+            let cellY = Int(updated[i].y / cellSize)
+
+            for dx in -1...1 {
+                for dy in -1...1 {
+                    let key = GridKey(x: cellX + dx, y: cellY + dy)
+                    guard let bucket = grid[key] else { continue }
+
+                    for j in bucket where i != j {
+                        let nodeDx = updated[i].x - updated[j].x
+                        let nodeDy = updated[i].y - updated[j].y
+                        let dist = max(sqrt(nodeDx * nodeDx + nodeDy * nodeDy), 1)
+                        let force = repulsion / (dist * dist)
+                        fx += (nodeDx / dist) * force
+                        fy += (nodeDy / dist) * force
+                    }
+                }
+            }
+
+            fx -= updated[i].x * centerPull
+            fy -= updated[i].y * centerPull
+
+            updated[i].vx = (updated[i].vx + fx * alpha) * damping
+            updated[i].vy = (updated[i].vy + fy * alpha) * damping
+        }
+
         for edge in edges {
             guard let si = nodeIndex[edge.sourceId],
                   let ti = nodeIndex[edge.targetId],
-                  si < nodes.count, ti < nodes.count else { continue }
+                  si < updated.count, ti < updated.count else { continue }
 
-            let dx = nodes[ti].x - nodes[si].x
-            let dy = nodes[ti].y - nodes[si].y
+            let dx = updated[ti].x - updated[si].x
+            let dy = updated[ti].y - updated[si].y
             let force = attraction * edge.strength * alpha
 
-            nodes[si].vx += dx * force
-            nodes[si].vy += dy * force
-            nodes[ti].vx -= dx * force
-            nodes[ti].vy -= dy * force
+            updated[si].vx += dx * force
+            updated[si].vy += dy * force
+            updated[ti].vx -= dx * force
+            updated[ti].vy -= dy * force
         }
 
-        // Apply velocities
-        for i in nodes.indices {
-            nodes[i].x += nodes[i].vx
-            nodes[i].y += nodes[i].vy
+        for i in updated.indices {
+            updated[i].x += updated[i].vx
+            updated[i].y += updated[i].vy
         }
+
+        nodes = updated
     }
 
     func selectNode(_ id: UUID?) {
         selectedNodeId = id
+    }
+
+    func nodeLookup() -> [UUID: GraphNode] {
+        Dictionary(uniqueKeysWithValues: nodes.map { ($0.id, $0) })
+    }
+
+    func updateNodePosition(id: UUID, x: Double, y: Double) {
+        guard let idx = nodeIndex[id] else { return }
+        var updated = nodes
+        updated[idx].x = x
+        updated[idx].y = y
+        updated[idx].vx = 0
+        updated[idx].vy = 0
+        nodes = updated
     }
 
     func savePositions() {
@@ -188,10 +287,11 @@ final class GraphViewModel {
         let req = NoteEntity.fetchAll()
         guard let notes = try? context.fetch(req) else { return }
 
+        let positions = Dictionary(uniqueKeysWithValues: nodes.map { ($0.id, ($0.x, $0.y)) })
         for note in notes {
-            if let node = nodes.first(where: { $0.id == note.id }) {
-                note.posX = node.x
-                note.posY = node.y
+            if let position = positions[note.id] {
+                note.posX = position.0
+                note.posY = position.1
             }
         }
         do {

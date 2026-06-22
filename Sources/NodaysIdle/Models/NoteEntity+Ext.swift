@@ -12,6 +12,7 @@ public class NoteEntity: NSManagedObject {
     @NSManaged public var posX: Double
     @NSManaged public var posY: Double
     @NSManaged public var embedding: Data?
+    @NSManaged public var embeddingContentHash: Int64
     @NSManaged public var sourcePath: String?
 }
 
@@ -31,6 +32,22 @@ extension NoteEntity {
         return Date().timeIntervalSince(mod) / 86400.0
     }
 
+    static func contentHash(for content: String) -> Int64 {
+        var hash: UInt64 = 5381
+        for byte in content.utf8 {
+            hash = ((hash << 5) &+ hash) &+ UInt64(byte)
+        }
+        return Int64(bitPattern: hash)
+    }
+
+    var currentContentHash: Int64 {
+        Self.contentHash(for: content)
+    }
+
+    var needsEmbeddingRefresh: Bool {
+        embedding == nil || embeddingContentHash != currentContentHash
+    }
+
     static func create(
         in context: NSManagedObjectContext,
         title: String = "Untitled",
@@ -43,6 +60,7 @@ extension NoteEntity {
         note.createdAt = Date()
         note.modifiedAt = Date()
         note.ripenessScore = 0.0
+        note.embeddingContentHash = 0
         note.posX = Double.random(in: -300...300)
         note.posY = Double.random(in: -300...300)
         return note

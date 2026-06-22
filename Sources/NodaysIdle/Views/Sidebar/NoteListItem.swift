@@ -62,14 +62,18 @@ struct NoteListItem: View {
 }
 
 extension Date {
+    private static let monthDayFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMM d"
+        return formatter
+    }()
+
     var relativeFormatted: String {
         let interval = -self.timeIntervalSinceNow
         if interval < 60     { return "now" }
         if interval < 3600   { return "\(Int(interval / 60))m" }
         if interval < 86400  { return "\(Int(interval / 3600))h" }
         if interval < 604800 { return "\(Int(interval / 86400))d" }
-        let formatter = DateFormatter()
-        formatter.dateFormat = "MMM d"
-        return formatter.string(from: self)
+        return Self.monthDayFormatter.string(from: self)
     }
 }
