@@ -88,6 +88,11 @@ final class PersistenceController: Sendable {
         noteEmbedding.attributeType = .binaryDataAttributeType
         noteEmbedding.isOptional = true
 
+        let noteEmbeddingHash = NSAttributeDescription()
+        noteEmbeddingHash.name = "embeddingContentHash"
+        noteEmbeddingHash.attributeType = .integer64AttributeType
+        noteEmbeddingHash.defaultValue = Int64(0)
+
         let noteSourcePath = NSAttributeDescription()
         noteSourcePath.name = "sourcePath"
         noteSourcePath.attributeType = .stringAttributeType
@@ -95,7 +100,7 @@ final class PersistenceController: Sendable {
 
         noteEntity.properties = [
             noteId, noteTitle, noteContent, noteCreatedAt, noteModifiedAt,
-            noteRipeness, noteX, noteY, noteEmbedding, noteSourcePath
+            noteRipeness, noteX, noteY, noteEmbedding, noteEmbeddingHash, noteSourcePath
         ]
 
         // --- EdgeEntity ---
@@ -160,6 +165,11 @@ final class PersistenceController: Sendable {
         canvasElements.attributeType = .binaryDataAttributeType
         canvasElements.isOptional = true
 
+        let canvasElementCount = NSAttributeDescription()
+        canvasElementCount.name = "elementCount"
+        canvasElementCount.attributeType = .integer32AttributeType
+        canvasElementCount.defaultValue = Int32(0)
+
         let canvasCreatedAt = NSAttributeDescription()
         canvasCreatedAt.name = "createdAt"
         canvasCreatedAt.attributeType = .dateAttributeType
@@ -174,7 +184,7 @@ final class PersistenceController: Sendable {
         canvasLinkedNote.isOptional = true
 
         canvasEntity.properties = [
-            canvasId, canvasTitle, canvasElements,
+            canvasId, canvasTitle, canvasElements, canvasElementCount,
             canvasCreatedAt, canvasModifiedAt, canvasLinkedNote
         ]
 

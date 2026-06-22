@@ -6,6 +6,7 @@ public class CanvasEntity: NSManagedObject {
     @NSManaged public var id: UUID
     @NSManaged public var title: String
     @NSManaged public var elementsData: Data?
+    @NSManaged public var elementCount: Int32
     @NSManaged public var createdAt: Date?
     @NSManaged public var modifiedAt: Date?
     @NSManaged public var linkedNoteId: UUID?
@@ -23,12 +24,12 @@ extension CanvasEntity {
         }
         set {
             elementsData = try? JSONEncoder().encode(newValue)
+            elementCount = Int32(newValue.count)
         }
     }
 
-    var elementCount: Int {
-        guard let data = elementsData, !data.isEmpty else { return 0 }
-        return (try? JSONDecoder().decode([CanvasElement].self, from: data).count) ?? 0
+    var displayElementCount: Int {
+        Int(elementCount)
     }
 
     static func create(
@@ -39,6 +40,7 @@ extension CanvasEntity {
         canvas.id = UUID()
         canvas.title = title
         canvas.elementsData = try? JSONEncoder().encode([CanvasElement]())
+        canvas.elementCount = 0
         canvas.createdAt = Date()
         canvas.modifiedAt = Date()
         return canvas

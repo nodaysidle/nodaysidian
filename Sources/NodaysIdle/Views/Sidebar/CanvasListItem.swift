@@ -19,7 +19,7 @@ struct CanvasListItem: View {
                     .lineLimit(1)
 
                 HStack(spacing: 6) {
-                    Text("\(canvas.elementCount) elements")
+                    Text("\(canvas.displayElementCount) elements")
                         .font(LatticeTheme.monoFont)
                         .foregroundStyle(LatticeTheme.textMuted)
 

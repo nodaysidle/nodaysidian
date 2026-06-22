@@ -7,6 +7,7 @@ struct WhiteboardView: View {
     @State private var isDraggingElement = false
     @State private var dragStartOffset: CGSize = .zero
     @State private var lastMagnification: CGFloat = 1.0
+    @State private var localPencilPoints: [CGPoint] = []
 
     var body: some View {
         ZStack {
@@ -18,6 +19,26 @@ struct WhiteboardView: View {
                     // Main canvas rendering
                     Canvas { ctx, size in
                         renderElements(ctx: ctx, size: size)
+                    }
+
+                    if localPencilPoints.count >= 2 {
+                        Canvas { ctx, _ in
+                            var path = Path()
+                            path.move(to: localPencilPoints[0])
+                            for i in 1..<localPencilPoints.count {
+                                path.addLine(to: localPencilPoints[i])
+                            }
+                            ctx.stroke(
+                                path,
+                                with: .color(whiteboard.strokeColor),
+                                style: StrokeStyle(
+                                    lineWidth: whiteboard.strokeWidth,
+                                    lineCap: .round,
+                                    lineJoin: .round
+                                )
+                            )
+                        }
+                        .allowsHitTesting(false)
                     }
 
                     // Drawing preview overlay (in-progress shape)
@@ -103,14 +124,14 @@ struct WhiteboardView: View {
     }
 
     private func renderElement(_ element: CanvasElement, ctx: GraphicsContext) {
-        let strokeColor = Color(hex: element.strokeColor)
+        let strokeColor = whiteboard.resolvedColor(hex: element.strokeColor)
         let lineWidth = CGFloat(element.strokeWidth)
 
         switch element.type {
         case .rect:
             let rect = element.frame
             if let fillHex = element.fillColor {
-                let fill = Color(hex: fillHex)
+                let fill = whiteboard.resolvedColor(hex: fillHex)
                 ctx.fill(Path(rect), with: .color(fill))
             }
             ctx.stroke(Path(rect), with: .color(strokeColor), lineWidth: lineWidth)
@@ -119,7 +140,7 @@ struct WhiteboardView: View {
             let rect = element.frame
             let path = Path(ellipseIn: rect)
             if let fillHex = element.fillColor {
-                let fill = Color(hex: fillHex)
+                let fill = whiteboard.resolvedColor(hex: fillHex)
                 ctx.fill(path, with: .color(fill))
             }
             ctx.stroke(path, with: .color(strokeColor), lineWidth: lineWidth)
@@ -222,15 +243,7 @@ struct WhiteboardView: View {
             .stroke(whiteboard.strokeColor, lineWidth: whiteboard.strokeWidth)
 
         case .pencil:
-            if whiteboard.pencilPoints.count >= 2 {
-                Path { path in
-                    path.move(to: whiteboard.pencilPoints[0])
-                    for i in 1..<whiteboard.pencilPoints.count {
-                        path.addLine(to: whiteboard.pencilPoints[i])
-                    }
-                }
-                .stroke(whiteboard.strokeColor, style: StrokeStyle(lineWidth: whiteboard.strokeWidth, lineCap: .round, lineJoin: .round))
-            }
+            EmptyView()
 
         default:
             EmptyView()
@@ -346,9 +359,9 @@ struct WhiteboardView: View {
                 case .pencil:
                     if !whiteboard.isDrawing {
                         whiteboard.isDrawing = true
-                        whiteboard.pencilPoints = [canvasStart]
+                        localPencilPoints = [canvasStart]
                     }
-                    whiteboard.pencilPoints.append(canvasPoint)
+                    localPencilPoints.append(canvasPoint)
 
                 case .text:
                     break
@@ -369,7 +382,8 @@ struct WhiteboardView: View {
                     dragStartOffset = .zero
 
                 case .pencil:
-                    whiteboard.finishPencilStroke()
+                    whiteboard.finishPencilStroke(points: localPencilPoints)
+                    localPencilPoints.removeAll()
                     dragStartOffset = .zero
 
                 case .text:

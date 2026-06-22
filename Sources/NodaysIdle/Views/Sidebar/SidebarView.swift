@@ -2,8 +2,10 @@ import SwiftUI
 
 struct SidebarView: View {
     @Bindable var vault: VaultViewModel
-    @Bindable var graph: GraphViewModel
     @Bindable var whiteboard: WhiteboardViewModel
+    var onSelectNote: (NoteEntity) -> Void
+    var onSelectNodeInGraph: (UUID) -> Void
+    var onReloadGraph: () -> Void
     var onSelectCanvas: ((CanvasEntity) -> Void)?
 
     @State private var hoverNoteId: UUID?
@@ -48,7 +50,7 @@ struct SidebarView: View {
 
             Button {
                 vault.createNote()
-                graph.reload()
+                onReloadGraph()
             } label: {
                 Image(systemName: "plus")
                     .font(.system(size: 13, weight: .medium))
@@ -113,7 +115,8 @@ struct SidebarView: View {
                     .onTapGesture {
                         withAnimation(.easeOut(duration: 0.18)) {
                             vault.selectedNote = note
-                            graph.selectNode(note.id)
+                            onSelectNodeInGraph(note.id)
+                            onSelectNote(note)
                         }
                     }
                     .onHover { hover in
@@ -135,14 +138,12 @@ struct SidebarView: View {
 
     private var canvasSection: some View {
         VStack(spacing: 0) {
-            // Divider
             Rectangle()
                 .fill(LatticeTheme.border)
                 .frame(height: 1)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 4)
 
-            // Section header
             HStack {
                 Text("CANVASES")
                     .font(.system(size: 10, weight: .semibold, design: .rounded))
@@ -181,12 +182,10 @@ struct SidebarView: View {
             .padding(.top, 8)
             .padding(.bottom, 6)
 
-            // Canvas list
             ScrollView {
                 LazyVStack(spacing: 1) {
                     ForEach(whiteboard.canvases, id: \.id) { canvas in
                         if renamingCanvasId == canvas.id {
-                            // Inline rename field
                             HStack(spacing: 10) {
                                 Image(systemName: "square.on.square")
                                     .font(.system(size: 11, weight: .medium))
@@ -220,7 +219,6 @@ struct SidebarView: View {
                                 isSelected: whiteboard.selectedCanvas?.id == canvas.id,
                                 isHovered: hoverCanvasId == canvas.id
                             )
-                            // Double-tap first so SwiftUI can distinguish from single-tap
                             .onTapGesture(count: 2) {
                                 renamingCanvasTitle = canvas.title
                                 renamingCanvasId = canvas.id

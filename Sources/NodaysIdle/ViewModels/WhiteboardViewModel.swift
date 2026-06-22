@@ -62,6 +62,7 @@ final class WhiteboardViewModel {
     var textEditPosition: CGPoint = .zero
 
     private var context: NSManagedObjectContext?
+    private var colorCache: [String: Color] = [:]
 
     var selectedElement: CanvasElement? {
         guard let id = selectedElementId else { return nil }
@@ -134,10 +135,20 @@ final class WhiteboardViewModel {
     func saveCurrentCanvas() {
         guard let canvas = selectedCanvas, let context else { return }
         canvas.elements = elements
+        canvas.elementCount = Int32(elements.count)
         canvas.modifiedAt = Date()
         do { try context.save() } catch {
             print("[Nodaysidian] Failed to save canvas: \(error.localizedDescription)")
         }
+    }
+
+    func resolvedColor(hex: String) -> Color {
+        if let cached = colorCache[hex] {
+            return cached
+        }
+        let color = Color(hex: hex)
+        colorCache[hex] = color
+        return color
     }
 
     // MARK: - Undo / Redo
@@ -315,22 +326,21 @@ final class WhiteboardViewModel {
         isDrawing = false
     }
 
-    func finishPencilStroke() {
-        guard pencilPoints.count >= 2 else {
+    func finishPencilStroke(points: [CGPoint]) {
+        guard points.count >= 2 else {
             pencilPoints.removeAll()
             isDrawing = false
             return
         }
 
-        // Compute bounding box
-        let xs = pencilPoints.map(\.x)
-        let ys = pencilPoints.map(\.y)
+        let xs = points.map(\.x)
+        let ys = points.map(\.y)
         let minX = xs.min() ?? 0
         let minY = ys.min() ?? 0
         let maxX = xs.max() ?? 0
         let maxY = ys.max() ?? 0
 
-        let codablePoints = pencilPoints.map { CodablePoint($0) }
+        let codablePoints = points.map { CodablePoint($0) }
 
         let element = CanvasElement(
             type: .pencil,
@@ -346,6 +356,10 @@ final class WhiteboardViewModel {
         addElement(element)
         pencilPoints.removeAll()
         isDrawing = false
+    }
+
+    func finishPencilStroke() {
+        finishPencilStroke(points: pencilPoints)
     }
 
     // MARK: - Text
