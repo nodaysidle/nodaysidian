@@ -1,64 +1,55 @@
-<p align="center">
-  <br />
-  <samp>n o d a y s i d i a n</samp>
-  <br />
-  <br />
-  <strong>Native macOS knowledge graph for Markdown notes.</strong>
-  <br />
-  <sub>Local-first. SwiftUI. Obsidian import. On-device semantic linking.</sub>
-  <br />
-  <br />
-  <img src="https://img.shields.io/badge/Platform-macOS%2015%2B-black?style=flat-square&logo=apple&logoColor=white" alt="Platform">
-  <img src="https://img.shields.io/badge/Swift-6.2-orange?style=flat-square&logo=swift&logoColor=white" alt="Swift">
-  <img src="https://img.shields.io/badge/Framework-SwiftUI-0A84FF?style=flat-square" alt="SwiftUI">
-  <img src="https://img.shields.io/badge/AI-Apple%20NaturalLanguage-5856D6?style=flat-square" alt="NaturalLanguage">
-  <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="License">
-  <br />
-  <br />
-  <a href="#download">Download</a> &middot; <a href="#features">Features</a> &middot; <a href="#architecture">Architecture</a> &middot; <a href="#build-from-source">Build</a>
-  <br />
-  <br />
-</p>
+# Nodaysidian
 
----
+> Native macOS knowledge graph for Markdown notes.
 
-## What is Nodaysidian?
+Local-first. SwiftUI. Obsidian import. On-device semantic linking.
 
-Nodaysidian is a native macOS app for writing Markdown notes, importing Obsidian vaults, and exploring the result as a local knowledge graph.
+![Platform](https://img.shields.io/badge/platform-macOS%2015%2B-black?style=flat-square&logo=apple)
+![Swift](https://img.shields.io/badge/Swift-6.2-orange?style=flat-square&logo=swift)
+![SwiftUI](https://img.shields.io/badge/SwiftUI-6-0A84FF?style=flat-square)
+![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)
 
-It stores data locally with Core Data, parses `[[wiki-links]]`, computes semantic similarity on-device with Apple’s NaturalLanguage framework, and renders notes as an interactive SwiftUI graph. No accounts, no API keys, no cloud sync, no Electron runtime.
+## Overview
+
+Nodaysidian is a native macOS app for writing Markdown notes, importing Obsidian vaults, and exploring the result as a local knowledge graph. It stores data locally with Core Data, parses `[[wiki-links]]`, computes semantic similarity on-device with Apple's NaturalLanguage framework, and renders notes as an interactive SwiftUI graph. No accounts, no API keys, no cloud sync, no Electron.
 
 ## Features
 
-- **Markdown note workspace** — create, edit, save, delete, and search notes.
-- **Obsidian vault import** — imports `.md` files and maps `[[wiki-links]]` into graph edges.
-- **Semantic auto-links** — discovers related notes from local text embeddings and adds `semantic-similarity` edges.
-- **Ripeness scoring** — ranks notes by age, content depth, and connection density so stale or under-connected notes stand out.
-- **Interactive graph canvas** — pan, zoom, drag nodes, double-click notes, freeze or resume the force simulation.
-- **Whiteboard mode** — canvases with select, rectangle, ellipse, arrow, text, pencil, undo, and redo.
-- **Native macOS packaging** — Swift Package Manager build plus ad-hoc signed `.app` bundle.
+- **Markdown note workspace** — create, edit, save, delete, and search notes
+- **Obsidian vault import** — imports `.md` files and maps `[[wiki-links]]` into graph edges
+- **Semantic auto-links** — discovers related notes from local text embeddings and adds `semantic-similarity` edges
+- **Ripeness scoring** — ranks notes by age, content depth, and connection density
+- **Interactive graph canvas** — pan, zoom, drag nodes, double-click notes, freeze or resume force simulation
+- **Whiteboard mode** — canvases with select, rectangle, ellipse, arrow, text, pencil, undo, and redo
+- **Native macOS packaging** — Swift Package Manager build plus ad-hoc signed `.app` bundle
 
-## Download
+## Technology
 
-Download the latest macOS build from GitHub Releases:
+| Area | Technology |
+|------|------------|
+| Language | Swift 6.2 |
+| Interface | SwiftUI |
+| Data | Core Data |
+| Intelligence | NaturalLanguage / NLEmbedding (on-device) |
+| Build | Swift Package Manager |
 
-[Download latest release](https://github.com/nodaysidle/nodaysidian/releases/latest)
+## Installation
+
+Download the latest macOS build from [GitHub Releases](https://github.com/nodaysidle/nodaysidian/releases/latest).
 
 Requirements:
 
-- macOS 15.0 or newer
+- macOS 15.0 or later
 - Apple Silicon build is produced by default on Apple Silicon hosts
 
-Install from the release build:
+1. Download `Nodaysidian.dmg`
+2. Open the disk image
+3. Drag `Nodaysidian.app` into `/Applications`
+4. Launch Nodaysidian
 
-1. Download `Nodaysidian.dmg`.
-2. Open the disk image.
-3. Drag `Nodaysidian.app` into `/Applications`.
-4. Launch Nodaysidian.
+The release build is ad-hoc signed. On first launch, macOS may require approval from Privacy & Security.
 
-The release build is ad-hoc signed. On first launch, macOS may require approving the app from Privacy & Security if Gatekeeper blocks unsigned developer apps.
-
-## Keyboard shortcuts
+## Keyboard Shortcuts
 
 - `Cmd + N` — New note
 - `Cmd + Shift + N` — New canvas
@@ -68,11 +59,11 @@ The release build is ad-hoc signed. On first launch, macOS may require approving
 - `Cmd + Z` / `Cmd + Shift + Z` — Whiteboard undo / redo
 - `Delete` — Delete selected whiteboard element
 
-## How it works
+## How It Works
 
 ### Notes and persistence
 
-Nodaysidian uses a programmatic Core Data model. Notes, graph edges, canvases, and whiteboard elements are persisted locally on the Mac.
+Nodaysidian uses a programmatic Core Data model. Notes, graph edges, canvases, and whiteboard elements are persisted locally.
 
 ### Obsidian import
 
@@ -80,43 +71,9 @@ The vault importer scans a selected directory for Markdown files, strips simple 
 
 ### Intelligence pass
 
-The intelligence cycle runs on launch and can be triggered manually. It:
+The intelligence cycle runs on launch and can be triggered manually. It computes ripeness scores, generates local NaturalLanguage embeddings, compares note embeddings with cosine similarity, and creates auto-discovered graph edges when similarity passes the threshold. All on-device.
 
-1. Computes ripeness scores for notes.
-2. Generates local NaturalLanguage embeddings for note content.
-3. Compares note embeddings with cosine similarity.
-4. Creates auto-discovered graph edges when similarity passes the threshold.
-
-All of this happens on-device.
-
-## Architecture
-
-```text
-Sources/NodaysIdle/
-  App/              App entry point, commands, launch-time intelligence pass
-  Models/           Core Data model, entity helpers, Obsidian vault importer
-  Intelligence/     Embedding, auto-edge discovery, ripeness scoring
-  ViewModels/       Vault, graph simulation, whiteboard state
-  Views/            Main shell, sidebar, editor, graph canvas, whiteboard
-  Theme/            Dark theme, color system, typography, shared modifiers
-Scripts/
-  package_app.sh    Build and bundle Nodaysidian.app
-  build-dmg.sh      Build a drag-to-Applications DMG
-  install.sh        Build, install to /Applications, and launch
-  compile_and_run.sh  Local development build-and-run loop
-  generate_icon.sh  Generate Icon.icns from SVG source
-```
-
-Tech stack:
-
-- Swift 6.2
-- SwiftUI
-- Core Data
-- NaturalLanguage / NLEmbedding
-- Swift Package Manager
-- macOS app bundle scripts with ad-hoc codesigning
-
-## Build from source
+## Development
 
 ```bash
 git clone https://github.com/nodaysidle/nodaysidian.git
@@ -137,9 +94,25 @@ Install locally:
 bash Scripts/install.sh
 ```
 
-## Release verification
+## Architecture
 
-The release process verifies:
+```text
+Sources/NodaysIdle/
+  App/              App entry point, commands, launch-time intelligence pass
+  Models/           Core Data model, entity helpers, Obsidian vault importer
+  Intelligence/     Embedding, auto-edge discovery, ripeness scoring
+  ViewModels/       Vault, graph simulation, whiteboard state
+  Views/            Main shell, sidebar, editor, graph canvas, whiteboard
+  Theme/            Dark theme, color system, typography, shared modifiers
+Scripts/
+  package_app.sh    Build and bundle Nodaysidian.app
+  build-dmg.sh      Build a drag-to-Applications DMG
+  install.sh        Build, install to /Applications, and launch
+  compile_and_run.sh  Local development build-and-run loop
+  generate_icon.sh  Generate Icon.icns from SVG source
+```
+
+## Release Verification
 
 ```bash
 swift build -c release
@@ -149,24 +122,18 @@ hdiutil verify Nodaysidian.dmg
 shasum -a 256 Nodaysidian.dmg Nodaysidian_*.tar.gz
 ```
 
-The repository includes a lightweight XCTest target that verifies release-critical packaging contracts, README links, privacy claims, and ignored generated artifacts.
-
 ## Privacy
 
-Nodaysidian is local-first:
+Nodaysidian is local-first: no account system, no telemetry, no network API calls for AI, no remote embedding provider. Imported notes stay on the local Mac.
 
-- no account system
-- no telemetry
-- no network API calls for AI
-- no remote embedding provider
-- imported notes stay on the local Mac
+## Status
+
+Active — feature-complete knowledge graph app. Ad-hoc signed, not notarized.
+
+## Contributing
+
+This repository is not currently accepting external contributions.
 
 ## License
 
 MIT
-
----
-
-<p align="center">
-  Built by <a href="https://github.com/nodaysidle">NODAYSIDLE</a>
-</p>
