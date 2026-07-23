@@ -1,3 +1,5 @@
+<img src=".github/social-preview.png" alt="Nodaysidian — NODAYSIDLE" width="100%">
+
 # Nodaysidian
 
 > Native macOS knowledge graph for Markdown notes.

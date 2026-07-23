@@ -2,25 +2,22 @@ import SwiftUI
 
 enum LatticeTheme {
     // MARK: - Core Palette
-    // Near-black base — ink-dark, not space-dark
-    static let void        = Color(hex: 0x0C0C0E)
-    static let deepSpace   = Color(hex: 0x111113)
-    static let nebula      = Color(hex: 0x161618)
-    static let surface     = Color(hex: 0x1C1C1F)
-    static let surfaceHover = Color(hex: 0x232326)
-    static let surfaceRaised = Color(hex: 0x27272A)
-    static let border      = Color(hex: 0x353539)
-    static let borderStrong = Color(hex: 0x48484F)
+    // Canonical NODAYSIDLE base — #0A0A0F
+    static let void        = Color(hex: 0x0A0A0F)
+    static let deepSpace   = Color(hex: 0x0E0E14)
+    static let nebula      = Color(hex: 0x101018)
+    static let surface     = Color(hex: 0x14141F)
+    static let surfaceHover = Color(hex: 0x181825)
+    static let surfaceRaised = Color(hex: 0x1C1C2A)
+    static let border      = Color(hex: 0x2A2A3C)
+    static let borderStrong = Color(hex: 0x3A3A50)
 
-    // MARK: - Accent Colors (flat, no glow variants)
-    // Primary: mint/teal — clear, modern
-    static let mint        = Color(hex: 0x2DD4BF)
-    // Secondary: soft lavender — calm, distinctive
-    static let lavender    = Color(hex: 0xA78BFA)
-    // Warm: coral/peach — for ripe/hot items
-    static let coral       = Color(hex: 0xFB7C6D)
-    // Neutral amber — mid-state
-    static let amber       = Color(hex: 0xF59E0B)
+    // MARK: - Accent Colors — monotonic Volt (#C8FF00) opacity family
+    static let volt        = Color(hex: 0xC8FF00)
+    static let mint        = volt                      // primary accent
+    static let lavender    = volt.opacity(0.60)        // secondary, calm
+    static let amber       = volt.opacity(0.75)        // mid-state
+    static let coral       = volt.opacity(0.92)        // hot / ripe
 
     // Legacy aliases — kept so call sites don't break during transition
     static let cyan        = mint
@@ -28,10 +25,10 @@ enum LatticeTheme {
     static let rose        = coral
 
     // MARK: - Text hierarchy
-    static let textPrimary   = Color(hex: 0xEEEEF0)   // near-white, slightly warm
-    static let textSecondary = Color(hex: 0xA0A0AA)   // mid gray — boosted
-    static let textMuted     = Color(hex: 0x6B6B78)   // subtle — boosted
-    static let textAccent    = mint                    // interactive / highlighted
+    static let textPrimary   = Color(hex: 0xF0F0F5)   // canonical primary
+    static let textSecondary = Color(hex: 0x6B6B80)   // canonical secondary
+    static let textMuted     = Color(hex: 0x4A4A55)   // dimmer than secondary
+    static let textAccent    = volt                    // interactive / highlighted
 
     // MARK: - Ripeness — flat color steps, no glow
     static func ripenessColor(_ score: Double) -> Color {
