@@ -124,3 +124,7 @@ Prompt files are instruction templates, not executable scripts. Keep them short,
 - `docs/AGENTS.md` — Project documentation.
 - `Tests/AGENTS.md` — Tests.
 - `Sources/AGENTS.md` — Swift source.
+
+## Cursor Cloud specific instructions
+
+This is a native macOS SwiftUI/AppKit app (`Package.swift` declares `.macOS(.v15)` only). The Cursor Cloud VM is Linux with no Swift toolchain, and the source imports AppKit/SwiftUI, so `swift build`/`swift test`/run cannot execute here. Build, test, and run this app on macOS following the Verification Ladder above; do not attempt Swift builds on the Linux cloud VM.
