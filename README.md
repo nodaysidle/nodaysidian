@@ -37,19 +37,22 @@ Nodaysidian is a native macOS app for writing Markdown notes, importing Obsidian
 
 ## Installation
 
-Download the latest macOS build from [GitHub Releases](https://github.com/nodaysidle/nodaysidian/releases/latest).
+The latest release ([v0.1.1](https://github.com/nodaysidle/nodaysidian/releases/tag/v0.1.1)) has no downloadable assets, so build from source for the current code.
 
 Requirements:
 
-- macOS 15.0 or later
-- Apple Silicon build is produced by default on Apple Silicon hosts
+- macOS 15.0 or later (`Package.swift`)
+- Swift toolchain (Xcode or Command Line Tools)
 
-1. Download `Nodaysidian.dmg`
-2. Open the disk image
-3. Drag `Nodaysidian.app` into `/Applications`
-4. Launch Nodaysidian
+```bash
+git clone https://github.com/nodaysidle/nodaysidian.git
+cd nodaysidian
+./Scripts/build-dmg.sh        # builds Nodaysidian.app and Nodaysidian.dmg
+```
 
-The release build is ad-hoc signed. On first launch, macOS may require approval from Privacy & Security.
+An older pre-built [`Nodaysidian.dmg`](https://github.com/nodaysidle/nodaysidian/releases/download/v0.1.0/Nodaysidian.dmg) is still attached to [v0.1.0](https://github.com/nodaysidle/nodaysidian/releases/tag/v0.1.0). It predates current `main`.
+
+Builds are ad-hoc signed (not notarized). On first launch, macOS may require approval from Privacy & Security.
 
 ## Keyboard Shortcuts
 
